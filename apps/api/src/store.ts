@@ -47,6 +47,13 @@ const waitingRequests = new Map<string, WaitingRequest>();
 const recordings = new Map<string, RecordingRecord>();
 const webhookEvents: unknown[] = [];
 
+export const resetMemoryStore = () => {
+  classes.clear();
+  waitingRequests.clear();
+  recordings.clear();
+  webhookEvents.length = 0;
+};
+
 const slugify = (value: string) =>
   value
     .trim()
@@ -414,8 +421,9 @@ export const findRecordingByEgressId = async (
 ): Promise<RecordingRecord | null> => {
   if (!isPostgresEnabled) {
     return (
-      Array.from(recordings.values()).find(item => item.egressId === egressId) ||
-      null
+      Array.from(recordings.values()).find(
+        item => item.egressId === egressId,
+      ) || null
     );
   }
 

@@ -26,11 +26,18 @@ Use these supporting docs when needed:
 - `docs/DECISIONS.md`: architecture decisions.
 - `docs/STAGING_CHECKLIST.md`: staging readiness.
 - `docs/PRODUCTION_CHECKLIST.md`: production readiness.
+- `docs/PRODUCTION_READINESS_PLAN.md`: production gates for 25 concurrent classes.
+- `docs/CAPACITY_TEST_PLAN.md`: load and soak test ladder for 25-class proof.
+- `docs/AGENT_REVIEW.md`: how to invoke the Agent Review quality gate.
 - `docs/HANDOFF_TEMPLATE.md`: handoff format for the next agent.
+
+## Production Target
+
+The final production target is 25 simultaneous classes with 16 participants per class, about 400 concurrent participants. Pilot runs are production rehearsals, not lower-quality demos. Production readiness requires measured capacity proof, a 2-hour soak test, monitoring, backup/restore validation, recording validation, and a clean Agent Review gate.
 
 ## Quick Start
 
-1. Copy `.env.example` to `.env` and keep the default dev keys for local testing. The default `DATA_STORE=memory` is only for quick local development.
+1. Copy `.env.example` to `.env` and keep the default dev keys for local testing. The default `DATA_STORE=memory` is only for quick local development. Environment-specific examples are available as `.env.local.example`, `.env.staging.example`, and `.env.production.example`.
 2. Start LiveKit media stack only:
 
    ```powershell
@@ -46,6 +53,20 @@ Use these supporting docs when needed:
    ```
 
 4. Open `http://localhost:5173`, create a class, then use the host and student links in separate browser windows.
+
+## Quality Gates
+
+Run the fast local gate before handoff or Agent Review:
+
+```powershell
+npm run verify
+```
+
+Run the browser smoke tests separately when a local browser test is needed:
+
+```powershell
+npm run test:browser
+```
 
 ## Persistence And Migrations
 
@@ -99,7 +120,6 @@ Use this when you want Docker to run PostgreSQL, LiveKit, Redis, Egress, the API
    ```
 
 4. Open:
-
    - Web: `http://localhost:8080`
    - API health: `http://localhost:4300/api/health`
    - LiveKit WebSocket: `ws://localhost:7880`

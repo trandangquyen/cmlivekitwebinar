@@ -91,3 +91,33 @@ Consequences:
 - Staging and production must set `DATA_STORE=postgres` and a real `DATABASE_URL`.
 - Database migrations are required before each API version that changes schema.
 - Backup and restore procedures are now a P0 operations task before production.
+
+## ADR-007: Production Target Requires Measured 25-Room Capacity
+
+Decision: The production target is 25 concurrent classes with 16 participants per class, but production readiness must be proven by load tests and a 2-hour soak test before launch.
+
+Reason:
+
+- WebRTC capacity depends on real server specs, network uplink, bitrate policy, participant behavior, TURN usage, and Egress load.
+- A pilot is useful only as a production rehearsal; it does not replace measured capacity proof.
+- Recording and all-camera scenarios can change CPU and bandwidth requirements materially.
+
+Consequences:
+
+- Production launch is blocked until a capacity report exists or the class cap is explicitly lowered.
+- Media nodes and Egress workers must be planned separately.
+- Acceptance targets are CPU p95 below 70%, outbound network below 75% of NIC capacity, packet loss p95 below 2%, join time p95 below 5 seconds, and no mass disconnects during the 2-hour soak.
+
+## ADR-008: Agent Review As A Required Quality Gate
+
+Decision: Use a Codex skill named `agent-review`, invoked by `Agent Review`, as a senior review gate after large tasks and before important commits.
+
+Reason:
+
+- The project has production operations, WebRTC capacity, security, and migration risks that need repeated review discipline.
+- A named skill keeps the review checklist consistent across work sessions and agents.
+
+Consequences:
+
+- Large tasks are not done while Agent Review reports blocking findings.
+- Review output must lead with concrete findings, severity, blocking status, tests, and production readiness.

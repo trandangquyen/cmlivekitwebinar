@@ -13,7 +13,8 @@ Build a self-hosted online classroom platform using open-source LiveKit instead 
 - Do not reuse Agora App Builder source as the production base. Use it only as UX reference.
 - Web browser is the first supported platform.
 - Class model: about 16 participants per class, most participants may enable camera.
-- Scale target: 13-23 concurrent classes eventually, but local MVP is only a functional baseline.
+- Production scale target: 25 concurrent classes, 16 participants per class, about 400 concurrent participants, with all participants allowed to publish camera.
+- Pilot is a production rehearsal and does not lower engineering or operations standards.
 
 ## Read Order For Every Agent
 
@@ -22,7 +23,8 @@ Build a self-hosted online classroom platform using open-source LiveKit instead 
 3. `docs/ROADMAP.md`
 4. `docs/BACKLOG.md`
 5. `docs/DECISIONS.md`
-6. If deploying or validating: `docs/STAGING_CHECKLIST.md` and `docs/PRODUCTION_CHECKLIST.md`
+6. `docs/PRODUCTION_READINESS_PLAN.md`
+7. If deploying or validating: `docs/STAGING_CHECKLIST.md`, `docs/PRODUCTION_CHECKLIST.md`, and `docs/CAPACITY_TEST_PLAN.md`
 
 ## Current Stack
 
@@ -36,6 +38,7 @@ Build a self-hosted online classroom platform using open-source LiveKit instead 
 ```powershell
 cd C:\xampp\htdocs\CMWebinarAgora\livekit-classroom
 npm run build
+npm run verify
 powershell -ExecutionPolicy Bypass -File .\scripts\check-docker.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\start-stack.ps1 -Full
 docker compose -f docker-compose.full.yml ps
@@ -61,5 +64,6 @@ Open:
 - Keep secrets out of git. `.env` is local-only.
 - Replace `devkey` and `secret` before staging.
 - Recording/Egress must not run on the same constrained media node in production.
-- Do not promise 23 concurrent rooms on one 1Gbps server. Capacity must be proven by load tests.
+- Do not promise 25 concurrent rooms on one 1Gbps server. Capacity must be proven by load tests.
 - Optimize video defaults before scaling: simulcast, dynacast, adaptive stream, bitrate caps.
+- Run `Agent Review` after large tasks and before important commits. Blocking findings must be resolved before considering the task done.

@@ -1,11 +1,18 @@
 import {config} from './config.js';
-import {
-  createRecording,
-  getRecording,
-  updateRecording,
-} from './store.js';
+import {createRecording, getRecording, updateRecording} from './store.js';
 import {buildRoomRecordToken} from './tokens.js';
 import type {Classroom, RecordingRecord} from './types.js';
+
+class EgressRpcError extends Error {
+  constructor(
+    readonly method: 'StartRoomCompositeEgress' | 'StopEgress',
+    readonly statusCode: number,
+    readonly payload: Record<string, unknown>,
+  ) {
+    super(`LiveKit Egress ${method} failed: ${JSON.stringify(payload)}`);
+    this.name = 'EgressRpcError';
+  }
+}
 
 const safePathPart = (value: string) =>
   value
@@ -35,12 +42,55 @@ const egressRpc = async (
     unknown
   >;
   if (!response.ok) {
-    throw new Error(
-      `LiveKit Egress ${method} failed: ${JSON.stringify(payload)}`,
-    );
+    throw new EgressRpcError(method, response.status, payload);
   }
   return payload;
 };
+
+const terminalRecordingStatuses = new Set<RecordingRecord['status']>([
+  'complete',
+  'failed',
+]);
+
+const egressTerminalStatusFromStopError = (
+  error: unknown,
+): RecordingRecord['status'] | null => {
+  if (
+    !(error instanceof EgressRpcError) ||
+    error.method !== 'StopEgress'
+  ) {
+    return null;
+  }
+
+  if (error.payload.code === 'not_found') {
+    return 'failed';
+  }
+  if (error.payload.code !== 'failed_precondition') {
+    return null;
+  }
+
+  const message = String(error.payload.msg || '');
+  if (!message.toLowerCase().includes('cannot be stopped')) {
+    return null;
+  }
+
+  const status = message.match(/status\s+(EGRESS_[A-Z_]+)/i)?.[1];
+  if (status === 'EGRESS_COMPLETE') {
+    return 'complete';
+  }
+  if (status === 'EGRESS_FAILED' || status === 'EGRESS_ABORTED') {
+    return 'failed';
+  }
+
+  return null;
+};
+
+const egressErrorMessage = (error: unknown) =>
+  error instanceof EgressRpcError
+    ? String(error.payload.msg || error.message)
+    : error instanceof Error
+      ? error.message
+      : String(error);
 
 const buildFileOutput = (classroom: Classroom) => {
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
@@ -116,15 +166,37 @@ export const stopRoomRecording = async (input: {
   if (!recording || recording.classId !== input.classroom.id) {
     throw new Error('Recording not found for this class.');
   }
+  if (terminalRecordingStatuses.has(recording.status)) {
+    return recording;
+  }
   if (!recording.egressId) {
     throw new Error('Recording has no Egress id yet.');
   }
 
   await updateRecording(recording.id, {status: 'stopping'});
   const token = await buildRoomRecordToken(input.classroom);
-  await egressRpc('StopEgress', token, {
-    egress_id: recording.egressId,
-  });
+  try {
+    await egressRpc('StopEgress', token, {
+      egress_id: recording.egressId,
+    });
+  } catch (error) {
+    const terminalStatus = egressTerminalStatusFromStopError(error);
+    const updated = await updateRecording(recording.id, {
+      status: terminalStatus || recording.status,
+      error:
+        terminalStatus === 'failed'
+          ? egressErrorMessage(error)
+          : recording.error,
+      stoppedAt: terminalStatus
+        ? recording.stoppedAt || new Date().toISOString()
+        : recording.stoppedAt,
+    });
+
+    if (terminalStatus && updated) {
+      return updated;
+    }
+    throw error;
+  }
 
   return await updateRecording(recording.id, {
     status: 'complete',

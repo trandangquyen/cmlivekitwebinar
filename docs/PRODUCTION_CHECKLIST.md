@@ -33,6 +33,8 @@ Do not start production classes until staging is stable and this checklist is ma
 - [ ] Rolling deploy or maintenance window process defined.
 - [ ] Egress failure recovery tested.
 - [ ] Docker image/version pinning strategy defined.
+- [ ] `npm run verify` passes for the release artifact.
+- [ ] `Agent Review` has no blocking findings.
 
 ## Capacity
 
@@ -41,9 +43,11 @@ Do not start production classes until staging is stable and this checklist is ma
 - [ ] 5-room test measured.
 - [ ] 10-room test measured.
 - [ ] 15-room test measured.
-- [ ] 23-room target test measured or production cap lowered.
+- [ ] 20-room test measured.
+- [ ] 25-room target test measured or production cap lowered.
 - [ ] Per-node capacity documented.
 - [ ] Bitrate and simulcast policy documented.
+- [ ] 2-hour target soak test completed without mass disconnects.
 
 ## Product
 

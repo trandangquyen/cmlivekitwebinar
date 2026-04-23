@@ -15,6 +15,9 @@
   - `LIVEKIT_API_SECRET`
   - DB credentials
   - storage credentials
+- [ ] `.env.staging.example` copied into the deployment secret store with real values.
+- [ ] Reverse proxy based on `infra/reverse-proxy/Caddyfile.example` or equivalent is deployed.
+- [ ] TURN/coturn is deployed or explicitly waived after network testing.
 
 ## Data
 
@@ -23,6 +26,7 @@
 - [ ] API uses PostgreSQL, not in-memory store.
 - [ ] Recording metadata persists across API restart.
 - [ ] Backup procedure documented.
+- [ ] Restore procedure tested.
 
 Implementation note: the API supports `DATA_STORE=postgres`, `DATABASE_URL`, and `npm run migrate --workspace @classroom/api`. The local full Docker stack uses Postgres with `DB_AUTO_MIGRATE=true`; staging should normally run migrations explicitly.
 
@@ -41,6 +45,8 @@ Implementation note: the API supports `DATA_STORE=postgres`, `DATABASE_URL`, and
 - [ ] Leave/rejoin works.
 - [ ] Recording start/stop works.
 - [ ] Recording output file is playable.
+- [ ] `npm run verify` passes before deployment.
+- [ ] `Agent Review` has no blocking findings for the staging release.
 
 ## Operations
 
@@ -55,6 +61,7 @@ Implementation note: the API supports `DATA_STORE=postgres`, `DATABASE_URL`, and
 ## Acceptance
 
 - [ ] One host + two students can complete a 30-minute test class.
+- [ ] One host + 15 students can complete a 2-hour rehearsal class before production signoff.
 - [ ] Browser refresh/rejoin is acceptable.
 - [ ] No obvious UI overlap at desktop viewport.
 - [ ] Teacher can operate without developer instructions.

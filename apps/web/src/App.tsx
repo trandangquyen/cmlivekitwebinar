@@ -62,6 +62,15 @@ const copyText = async (value: string) => {
   await navigator.clipboard.writeText(value);
 };
 
+const liveRecordingStatuses = new Set<RecordingRecord['status']>([
+  'starting',
+  'active',
+  'stopping',
+]);
+
+const isLiveRecording = (recording: RecordingRecord) =>
+  liveRecordingStatuses.has(recording.status);
+
 const formatDisconnectReason = (reason?: DisconnectReason) => {
   const reasonName =
     reason === undefined
@@ -82,7 +91,8 @@ const formatDisconnectReason = (reason?: DisconnectReason) => {
   return `Disconnected from the classroom (${reasonName}). ${
     reason === undefined
       ? 'Check the browser console and LiveKit logs for the exact failure.'
-      : guidance[reason] || 'Check the browser console and LiveKit logs for details.'
+      : guidance[reason] ||
+        'Check the browser console and LiveKit logs for details.'
   }`;
 };
 
@@ -250,7 +260,8 @@ function HomePage({navigate}: {navigate: (path: string) => void}) {
               <div className="button-row">
                 <button
                   className="secondary-button"
-                  onClick={() => copyText(created.links.host)}>
+                  onClick={() => copyText(created.links.host)}
+                >
                   <Clipboard size={18} />
                   Copy host
                 </button>
@@ -260,7 +271,8 @@ function HomePage({navigate}: {navigate: (path: string) => void}) {
                     navigate(
                       `/join/${created.id}?role=host&code=${created.hostAccessCode}`,
                     )
-                  }>
+                  }
+                >
                   <Video size={18} />
                   Enter class
                 </button>
@@ -400,13 +412,15 @@ function JoinPage({
           <button
             type="button"
             className={role === 'student' ? 'active' : ''}
-            onClick={() => setRole('student')}>
+            onClick={() => setRole('student')}
+          >
             Student
           </button>
           <button
             type="button"
             className={role === 'host' ? 'active' : ''}
-            onClick={() => setRole('host')}>
+            onClick={() => setRole('host')}
+          >
             Host
           </button>
         </div>
@@ -442,7 +456,8 @@ function JoinPage({
         <button
           className="primary-button"
           type="submit"
-          disabled={busy || !!waitingRequestId}>
+          disabled={busy || !!waitingRequestId}
+        >
           <Video size={18} />
           {waitingRequestId ? 'Waiting...' : busy ? 'Joining...' : 'Join'}
         </button>
@@ -510,7 +525,8 @@ function ClassroomRoom({
             return;
           }
           onDisconnected(formatDisconnectReason(reason));
-        }}>
+        }}
+      >
         <RoomAudioRenderer />
         <ClassroomTopbar
           session={session}
@@ -543,6 +559,7 @@ function ClassroomTopbar({
     useState<RecordingRecord | null>(null);
   const [recordings, setRecordings] = useState<RecordingRecord[]>([]);
   const [recordingError, setRecordingError] = useState('');
+  const [recordingBusy, setRecordingBusy] = useState(false);
 
   const isHost = session.role === 'host';
   const topbarMessage = roomIssue || recordingError;
@@ -553,10 +570,16 @@ function ClassroomTopbar({
     }
     const result = await listRecordings(session.classId, session.accessCode);
     setRecordings(result.recordings);
+    setActiveRecording(result.recordings.find(isLiveRecording) || null);
   };
 
   const toggleRecording = async () => {
+    if (recordingBusy) {
+      return;
+    }
+
     setRecordingError('');
+    setRecordingBusy(true);
     try {
       if (!activeRecording) {
         const {recording} = await startRecording({
@@ -564,7 +587,7 @@ function ClassroomTopbar({
           hostAccessCode: session.accessCode,
           layout: 'speaker',
         });
-        setActiveRecording(recording);
+        setActiveRecording(isLiveRecording(recording) ? recording : null);
         await refreshRecordings();
       } else {
         const {recording} = await stopRecording({
@@ -576,15 +599,40 @@ function ClassroomTopbar({
         setRecordings(current =>
           current.map(item => (item.id === recording.id ? recording : item)),
         );
+        await refreshRecordings();
       }
     } catch (err) {
       setRecordingError(err instanceof Error ? err.message : String(err));
+      await refreshRecordings().catch(() => {});
+    } finally {
+      setRecordingBusy(false);
     }
   };
 
   useEffect(() => {
     refreshRecordings().catch(() => {});
+    if (!isHost) {
+      return;
+    }
+
+    const intervalId = window.setInterval(() => {
+      refreshRecordings().catch(() => {});
+    }, 5000);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
   }, []);
+
+  const recordingButtonDisabled =
+    recordingBusy || activeRecording?.status === 'stopping';
+  const recordingButtonLabel = activeRecording
+    ? recordingBusy || activeRecording.status === 'stopping'
+      ? 'Stopping...'
+      : 'Stop rec'
+    : recordingBusy
+      ? 'Starting...'
+      : 'Record';
 
   return (
     <header className="classroom-topbar">
@@ -609,12 +657,12 @@ function ClassroomTopbar({
               hostAccessCode={session.accessCode}
             />
             <button
-              className={
-                activeRecording ? 'danger-button' : 'secondary-button'
-              }
-              onClick={toggleRecording}>
+              className={activeRecording ? 'danger-button' : 'secondary-button'}
+              disabled={recordingButtonDisabled}
+              onClick={toggleRecording}
+            >
               {activeRecording ? <StopCircle size={18} /> : <Radio size={18} />}
-              {activeRecording ? 'Stop rec' : 'Record'}
+              {recordingButtonLabel}
             </button>
           </>
         ) : null}
@@ -624,7 +672,8 @@ function ClassroomTopbar({
           onClick={() => {
             onLeave();
             room.disconnect();
-          }}>
+          }}
+        >
           <LogOut size={18} />
           Leave
         </button>
@@ -669,10 +718,7 @@ function WaitingHostPanel({
     return () => window.clearInterval(timer);
   }, [classId, hostAccessCode]);
 
-  const decide = async (
-    requestId: string,
-    decision: 'approve' | 'reject',
-  ) => {
+  const decide = async (requestId: string, decision: 'approve' | 'reject') => {
     await decideWaitingRequest({
       classId,
       requestId,
@@ -698,12 +744,14 @@ function WaitingHostPanel({
                 <div>
                   <button
                     className="icon-button"
-                    onClick={() => decide(request.id, 'approve')}>
+                    onClick={() => decide(request.id, 'approve')}
+                  >
                     <Check size={17} />
                   </button>
                   <button
                     className="icon-button"
-                    onClick={() => decide(request.id, 'reject')}>
+                    onClick={() => decide(request.id, 'reject')}
+                  >
                     <X size={17} />
                   </button>
                 </div>

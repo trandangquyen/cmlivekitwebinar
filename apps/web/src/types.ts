@@ -64,7 +64,6 @@ export interface WaitingJoin {
   pollUrl: string;
 }
 
-export type JoinResponse = Omit<
-  JoinedSession,
-  'accessCode' | 'initialAudio' | 'initialVideo'
-> | WaitingJoin;
+export type JoinResponse =
+  | Omit<JoinedSession, 'accessCode' | 'initialAudio' | 'initialVideo'>
+  | WaitingJoin;

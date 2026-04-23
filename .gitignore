@@ -5,3 +5,5 @@ dist
 *.log
 recordings
 coverage
+playwright-report
+test-results

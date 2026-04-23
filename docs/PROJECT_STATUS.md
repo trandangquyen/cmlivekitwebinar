@@ -4,7 +4,7 @@ Last updated: 2026-04-23
 
 ## Summary
 
-The project has moved from planning into a working local MVP baseline and the first staging-foundation work has started. The full Docker stack now runs with self-hosted LiveKit, Redis, Egress, PostgreSQL, API, and web frontend.
+The project has moved from planning into a working local MVP baseline and production-readiness foundation work has started. The final target is 25 concurrent classes with 16 participants per class, and pilot runs are treated as production rehearsals rather than lower-standard demos. The full Docker stack now runs with self-hosted LiveKit, Redis, Egress, PostgreSQL, API, and web frontend.
 
 ## Completed
 
@@ -39,6 +39,16 @@ The project has moved from planning into a working local MVP baseline and the fi
 - Fixed classroom viewport issue where LiveKit control footer was hidden below the visible area.
 - Fixed local Docker Desktop media candidate handling for same-machine browser demos by advertising `127.0.0.1` instead of the LiveKit container IP.
 - Added frontend error surfacing for unexpected LiveKit disconnects and camera/microphone failures instead of silently navigating back to `/`.
+- Added engineering foundation scaffolding:
+  - ESLint and Prettier configuration.
+  - Vitest/Supertest API test baseline.
+  - Playwright browser smoke test baseline.
+  - `npm run verify` quality gate.
+- Installed the Codex `agent-review` skill and documented the `Agent Review` gate.
+- Added production-readiness docs for the 25-class target and capacity test ladder.
+- Added local/staging/production env examples.
+- Pinned LiveKit and Egress image defaults away from `latest`.
+- Added reverse proxy and TURN configuration examples.
 - Verified locally:
   - `npm run build` passes.
   - `npm run typecheck` passes.
@@ -60,9 +70,9 @@ The project has moved from planning into a working local MVP baseline and the fi
 - LiveKit is using dev credentials and local network settings.
 - Local Docker media config is same-machine oriented (`rtc.node_ip=127.0.0.1`); LAN, staging, and Egress validation need a reachable LAN/public IP or external-IP setup.
 - UDP port range is intentionally small for local dev and is not production capacity.
-- No automated tests yet.
 - No load test harness yet.
 - No staging environment yet.
+- API/browser test baselines exist, but coverage is still incomplete for recording, auth, teacher controls, and production load.
 
 ## Current Local Runtime
 
@@ -83,10 +93,11 @@ The project has moved from planning into a working local MVP baseline and the fi
 
 ## Next Milestone
 
-Move from local MVP to staging-ready v0.2:
+Move from local MVP to staging/production-ready v0.2 foundation:
 
 - Finish environment-specific configuration.
 - Add HTTPS/reverse proxy plan.
 - Validate Egress recording.
-- Add basic automated tests.
+- Expand automated tests.
 - Prepare staging deployment runbook.
+- Add auth, recording object storage validation, and production capacity proof workflow.

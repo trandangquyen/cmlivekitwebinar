@@ -5,5 +5,5 @@ ws_url: ws://livekit:7880
 insecure: true
 redis:
   address: redis:6379
-template_base: http://egress:7980/
+template_base: http://localhost:7980/
 prometheus_port: 9898

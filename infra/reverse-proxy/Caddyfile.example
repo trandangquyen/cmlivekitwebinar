@@ -1,0 +1,18 @@
+{
+  email ops@example.com
+}
+
+classroom.example.com {
+  encode zstd gzip
+  handle /api/* {
+    reverse_proxy api:4300
+  }
+  handle {
+    reverse_proxy web:80
+  }
+}
+
+livekit.example.com {
+  encode zstd gzip
+  reverse_proxy livekit:7880
+}

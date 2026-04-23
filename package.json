@@ -2,6 +2,7 @@
   "name": "livekit-classroom",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "description": "Self-hosted LiveKit classroom platform for web-based education.",
   "workspaces": [
     "apps/api",
@@ -12,10 +13,26 @@
     "dev:api": "npm run dev --workspace @classroom/api",
     "dev:web": "npm run dev --workspace @classroom/web",
     "build": "npm run build --workspace @classroom/api && npm run build --workspace @classroom/web",
+    "format:check": "prettier --check .",
+    "lint": "eslint .",
     "start": "npm run start --workspace @classroom/api",
-    "typecheck": "npm run typecheck --workspace @classroom/api && npm run typecheck --workspace @classroom/web"
+    "test": "npm run test:api",
+    "test:api": "npm run test --workspace @classroom/api",
+    "test:browser": "playwright test",
+    "typecheck": "npm run typecheck --workspace @classroom/api && npm run typecheck --workspace @classroom/web",
+    "verify": "npm run typecheck && npm run lint && npm run test:api && npm run build"
   },
   "engines": {
     "node": ">=20"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.1",
+    "@playwright/test": "^1.57.0",
+    "@types/supertest": "^6.0.3",
+    "eslint": "^9.39.1",
+    "prettier": "^3.7.4",
+    "supertest": "^7.1.4",
+    "typescript-eslint": "^8.48.1",
+    "vitest": "^4.0.15"
   }
 }

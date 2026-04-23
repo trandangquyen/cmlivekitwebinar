@@ -1,0 +1,15 @@
+# coturn baseline for staging/production networks that block direct UDP.
+# Replace realm, external-ip, and credentials in the deployment secret store.
+listening-port=3478
+tls-listening-port=5349
+fingerprint
+lt-cred-mech
+realm=classroom.example.com
+server-name=classroom.example.com
+external-ip=PUBLIC_IP
+user=classroom-turn:replace-me
+no-multicast-peers
+no-cli
+log-file=stdout
+min-port=49152
+max-port=65535

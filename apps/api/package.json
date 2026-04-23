@@ -10,7 +10,8 @@
     "migrate": "tsx src/migrate.ts",
     "migrate:prod": "node dist/migrate.js",
     "start": "node dist/index.js",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "test": "vitest run --config vitest.config.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.test.json --noEmit"
   },
   "dependencies": {
     "cors": "latest",

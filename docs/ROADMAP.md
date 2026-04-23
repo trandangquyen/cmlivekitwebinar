@@ -20,7 +20,7 @@ Exit criteria:
 
 Target duration: 1-2 weeks
 
-Goal: make the project deployable to a staging server with persistent data and basic operational safety.
+Goal: make the project deployable to a staging server with persistent data, HTTPS, baseline tests, and production-like configuration.
 
 Required work:
 
@@ -32,6 +32,7 @@ Required work:
 - Validate real Egress recording output.
 - Add basic backend API tests.
 - Add frontend smoke tests for create/join/waiting room.
+- Add Agent Review quality gate.
 - Add staging deployment runbook.
 - Add monitoring basics: container health, CPU, memory, network, LiveKit logs.
 
@@ -75,12 +76,12 @@ Exit criteria:
 
 Target duration: 2-4 weeks after v0.3
 
-Goal: prove that on-prem infrastructure can handle real concurrency.
+Goal: prove that on-prem infrastructure can handle 25 concurrent classes.
 
 Required work:
 
 - Build load test harness for rooms and participants.
-- Benchmark 1, 5, 10, 15, 23 concurrent rooms.
+- Benchmark 1, 5, 10, 15, 20, and 25 concurrent rooms.
 - Define bitrate profiles for teacher/student/screen share.
 - Expand UDP port ranges and firewall documentation.
 - Separate media nodes from Egress workers.
@@ -97,7 +98,7 @@ Exit criteria:
   - outbound network below 75% of NIC capacity.
   - packet loss p95 below 2%.
   - join time p95 below 5 seconds.
-  - 2h class does not suffer mass disconnects.
+  - 2h target soak does not suffer mass disconnects.
 
 ## Phase E: Production Launch
 
@@ -121,3 +122,4 @@ Exit criteria:
 - Pilot group signs off.
 - Monitoring and alerting are live.
 - Support owner is defined.
+- 25-room capacity report is approved or the production class cap is lowered.

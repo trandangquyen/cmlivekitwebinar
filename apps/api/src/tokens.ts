@@ -1,7 +1,11 @@
 import {AccessToken} from 'livekit-server-sdk';
 import {nanoid} from 'nanoid';
 import {config} from './config.js';
-import type {Classroom, ClassroomRole, ParticipantJoinPayload} from './types.js';
+import type {
+  Classroom,
+  ClassroomRole,
+  ParticipantJoinPayload,
+} from './types.js';
 
 const identityFor = (role: ClassroomRole) => `${role}_${nanoid(12)}`;
 
@@ -20,15 +24,19 @@ export const buildParticipantJoinPayload = async (input: {
     roomAdmin: isHost,
     roomRecord: isHost,
   };
-  const token = new AccessToken(config.livekit.apiKey, config.livekit.apiSecret, {
-    identity,
-    name: participantName,
-    ttl: config.classroom.tokenTtl,
-    metadata: JSON.stringify({
-      classId: classroom.id,
-      role,
-    }),
-  });
+  const token = new AccessToken(
+    config.livekit.apiKey,
+    config.livekit.apiSecret,
+    {
+      identity,
+      name: participantName,
+      ttl: config.classroom.tokenTtl,
+      metadata: JSON.stringify({
+        classId: classroom.id,
+        role,
+      }),
+    },
+  );
 
   token.addGrant({
     room: classroom.roomName,
@@ -54,10 +62,14 @@ export const buildParticipantJoinPayload = async (input: {
 };
 
 export const buildRoomRecordToken = async (classroom: Classroom) => {
-  const token = new AccessToken(config.livekit.apiKey, config.livekit.apiSecret, {
-    identity: `recording_api_${classroom.id}`,
-    ttl: '10m',
-  });
+  const token = new AccessToken(
+    config.livekit.apiKey,
+    config.livekit.apiSecret,
+    {
+      identity: `recording_api_${classroom.id}`,
+      ttl: '10m',
+    },
+  );
 
   token.addGrant({
     room: classroom.roomName,
