@@ -1,4 +1,20 @@
 services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: classroom
+      POSTGRES_USER: classroom
+      POSTGRES_PASSWORD: classroom_dev
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U classroom -d classroom"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+
   redis:
     image: redis:7-alpine
     command: ["redis-server", "--appendonly", "yes"]
@@ -54,12 +70,17 @@ services:
       context: .
       dockerfile: apps/api/Dockerfile
     depends_on:
+      postgres:
+        condition: service_healthy
       livekit:
         condition: service_started
     environment:
       API_PORT: 4300
       FRONTEND_ORIGIN: http://localhost:8080
       PUBLIC_API_BASE_URL: http://localhost:4300
+      DATA_STORE: postgres
+      DATABASE_URL: postgresql://classroom:classroom_dev@postgres:5432/classroom
+      DB_AUTO_MIGRATE: "true"
       LIVEKIT_WS_URL: ws://localhost:7880
       LIVEKIT_HTTP_URL: http://livekit:7880
       LIVEKIT_API_KEY: devkey
@@ -84,4 +105,5 @@ services:
       - "8080:80"
 
 volumes:
+  postgres-data:
   redis-data:

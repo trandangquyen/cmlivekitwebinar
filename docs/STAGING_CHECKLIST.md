@@ -24,6 +24,8 @@
 - [ ] Recording metadata persists across API restart.
 - [ ] Backup procedure documented.
 
+Implementation note: the API supports `DATA_STORE=postgres`, `DATABASE_URL`, and `npm run migrate --workspace @classroom/api`. The local full Docker stack uses Postgres with `DB_AUTO_MIGRATE=true`; staging should normally run migrations explicitly.
+
 ## App
 
 - [ ] Web served over HTTPS.

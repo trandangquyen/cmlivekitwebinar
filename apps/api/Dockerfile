@@ -23,6 +23,7 @@ RUN npm ci --omit=dev --workspace @classroom/api --include-workspace-root=false 
   && npm cache clean --force
 
 COPY --from=build /app/apps/api/dist apps/api/dist
+COPY apps/api/migrations apps/api/migrations
 
 EXPOSE 4300
 CMD ["npm", "run", "start", "--workspace", "@classroom/api"]

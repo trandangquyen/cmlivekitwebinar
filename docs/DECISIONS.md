@@ -73,5 +73,21 @@ Reason:
 
 Consequences:
 
-- PostgreSQL is mandatory before staging.
-- API restart currently loses class and recording metadata.
+- PostgreSQL was mandatory before staging work could continue.
+- API restart loses class and recording metadata only when `DATA_STORE=memory` is used.
+
+## ADR-006: PostgreSQL For Staging Persistence
+
+Decision: Use PostgreSQL as the first durable application database and keep the in-memory store only as a quick local development mode.
+
+Reason:
+
+- Classes, waiting room requests, and recording metadata must survive API restarts before staging.
+- PostgreSQL is predictable for backup/restore, migrations, and future reporting/admin workflows.
+- The full Docker stack should resemble staging more closely than the initial memory-only MVP.
+
+Consequences:
+
+- Staging and production must set `DATA_STORE=postgres` and a real `DATABASE_URL`.
+- Database migrations are required before each API version that changes schema.
+- Backup and restore procedures are now a P0 operations task before production.

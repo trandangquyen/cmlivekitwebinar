@@ -8,7 +8,9 @@ LiveKit has paid Cloud plans, but the media server, SDKs, and Egress service can
 
 - `apps/api`: Express API for class creation, join tokens, waiting room approval, recording start/stop, and LiveKit webhook intake.
 - `apps/web`: React/Vite web classroom using LiveKit React Components with camera, mic, screen share, chat, grid/focus layout, and host recording controls.
-- `docker-compose.livekit.yml`: local/on-prem LiveKit stack with Redis and Egress.
+- `docker-compose.full.yml`: full local stack with PostgreSQL, LiveKit, Redis, Egress, API, and web.
+- `docker-compose.livekit.yml`: local/on-prem media-only LiveKit stack with Redis and Egress.
+- `apps/api/migrations`: PostgreSQL schema migrations for class, waiting room, recording, and webhook metadata.
 
 ## Project Coordination
 
@@ -28,7 +30,7 @@ Use these supporting docs when needed:
 
 ## Quick Start
 
-1. Copy `.env.example` to `.env` and keep the default dev keys for local testing.
+1. Copy `.env.example` to `.env` and keep the default dev keys for local testing. The default `DATA_STORE=memory` is only for quick local development.
 2. Start LiveKit media stack only:
 
    ```powershell
@@ -45,9 +47,28 @@ Use these supporting docs when needed:
 
 4. Open `http://localhost:5173`, create a class, then use the host and student links in separate browser windows.
 
+## Persistence And Migrations
+
+Full Docker mode uses PostgreSQL and runs API migrations automatically for local convenience. For a non-Docker API process, set:
+
+```powershell
+DATA_STORE=postgres
+DATABASE_URL=postgresql://classroom:classroom_dev@localhost:5432/classroom
+npm run migrate --workspace @classroom/api
+```
+
+For staging/production, run migrations explicitly before starting the new API version:
+
+```powershell
+npm run build --workspace @classroom/api
+npm run migrate:prod --workspace @classroom/api
+```
+
+Keep `DB_AUTO_MIGRATE=false` outside local full-stack development unless the deployment process intentionally owns automatic migrations.
+
 ## Full Docker Stack On Windows
 
-Use this when you want Docker to run LiveKit, Redis, Egress, the API, and the web app together.
+Use this when you want Docker to run PostgreSQL, LiveKit, Redis, Egress, the API, and the web app together.
 
 1. Check prerequisites:
 

@@ -15,6 +15,7 @@ import {
   listWaitingRequests,
   updateRecording,
 } from './store.js';
+import {runAutoMigrations} from './migrations.js';
 import {startRoomRecording, stopRoomRecording} from './recordings.js';
 import {buildParticipantJoinPayload} from './tokens.js';
 import type {ClassroomRole} from './types.js';
@@ -60,8 +61,8 @@ const recordingStopSchema = z.object({
   recordingId: z.string().trim().min(1),
 });
 
-const assertHostCode = (classId: string, code: string) => {
-  const classroom = getClassroom(classId);
+const assertHostCode = async (classId: string, code: string) => {
+  const classroom = await getClassroom(classId);
   if (!classroom) {
     throw Object.assign(new Error('Class not found.'), {statusCode: 404});
   }
@@ -88,12 +89,12 @@ const paramValue = (
   });
 };
 
-const assertAccessCode = (
+const assertAccessCode = async (
   classId: string,
   role: ClassroomRole,
   code: string,
 ) => {
-  const classroom = getClassroom(classId);
+  const classroom = await getClassroom(classId);
   if (!classroom) {
     throw Object.assign(new Error('Class not found.'), {statusCode: 404});
   }
@@ -110,45 +111,54 @@ const assertAccessCode = (
 app.get('/api/health', (_req, res) => {
   res.json({
     ok: true,
+    dataStore: config.database.provider,
     livekitUrl: config.livekit.wsUrl,
     time: new Date().toISOString(),
   });
 });
 
-app.get('/api/classes', (_req, res) => {
-  res.json({classes: listClassrooms()});
-});
+app.get(
+  '/api/classes',
+  asyncHandler(async (_req, res) => {
+    res.json({classes: await listClassrooms()});
+  }),
+);
 
 app.post(
   '/api/classes',
   asyncHandler(async (req, res) => {
     const input = createClassSchema.parse(req.body);
-    const classroom = createClassroom(input);
+    const classroom = await createClassroom(input);
     res.status(201).json({classroom});
   }),
 );
 
-app.get('/api/classes/:classId', (req, res) => {
-  const classroom = getClassroom(paramValue(req.params.classId, 'classId'));
-  if (!classroom) {
-    res.status(404).json({error: 'Class not found.'});
-    return;
-  }
-  res.json({classroom});
-});
+app.get(
+  '/api/classes/:classId',
+  asyncHandler(async (req, res) => {
+    const classroom = await getClassroom(
+      paramValue(req.params.classId, 'classId'),
+    );
+    if (!classroom) {
+      res.status(404).json({error: 'Class not found.'});
+      return;
+    }
+    res.json({classroom});
+  }),
+);
 
 app.post(
   '/api/classes/:classId/join',
   asyncHandler(async (req, res) => {
     const input = joinSchema.parse(req.body);
-    const classroom = assertAccessCode(
+    const classroom = await assertAccessCode(
       paramValue(req.params.classId, 'classId'),
       input.role,
       input.accessCode,
     );
 
     if (input.role === 'student' && classroom.waitingRoomEnabled) {
-      const request = createWaitingRequest({
+      const request = await createWaitingRequest({
         classId: classroom.id,
         name: input.name,
         accessCode: input.accessCode,
@@ -173,7 +183,7 @@ app.post(
 app.get(
   '/api/join-requests/:requestId',
   asyncHandler(async (req, res) => {
-    const request = getWaitingRequest(
+    const request = await getWaitingRequest(
       paramValue(req.params.requestId, 'requestId'),
     );
     if (!request) {
@@ -188,7 +198,7 @@ app.get(
       res.status(403).json({status: 'rejected'});
       return;
     }
-    const classroom = getClassroom(request.classId);
+    const classroom = await getClassroom(request.classId);
     if (!classroom) {
       res.status(404).json({error: 'Class not found.'});
       return;
@@ -202,42 +212,48 @@ app.get(
   }),
 );
 
-app.get('/api/classes/:classId/waiting', (req, res) => {
-  const classroom = assertHostCode(
-    paramValue(req.params.classId, 'classId'),
-    String(req.query.hostAccessCode || ''),
-  );
-  res.json({
-    classId: classroom.id,
-    requests: listWaitingRequests(classroom.id),
-  });
-});
+app.get(
+  '/api/classes/:classId/waiting',
+  asyncHandler(async (req, res) => {
+    const classroom = await assertHostCode(
+      paramValue(req.params.classId, 'classId'),
+      String(req.query.hostAccessCode || ''),
+    );
+    res.json({
+      classId: classroom.id,
+      requests: await listWaitingRequests(classroom.id),
+    });
+  }),
+);
 
-app.post('/api/classes/:classId/waiting/:requestId', (req, res) => {
-  const input = waitingDecisionSchema.parse(req.body);
-  const classroom = assertHostCode(
-    paramValue(req.params.classId, 'classId'),
-    input.hostAccessCode,
-  );
-  const request = getWaitingRequest(
-    paramValue(req.params.requestId, 'requestId'),
-  );
-  if (!request || request.classId !== classroom.id) {
-    res.status(404).json({error: 'Join request not found.'});
-    return;
-  }
-  const updated = decideWaitingRequest(
-    request.id,
-    input.decision === 'approve' ? 'approved' : 'rejected',
-  );
-  res.json({request: updated});
-});
+app.post(
+  '/api/classes/:classId/waiting/:requestId',
+  asyncHandler(async (req, res) => {
+    const input = waitingDecisionSchema.parse(req.body);
+    const classroom = await assertHostCode(
+      paramValue(req.params.classId, 'classId'),
+      input.hostAccessCode,
+    );
+    const request = await getWaitingRequest(
+      paramValue(req.params.requestId, 'requestId'),
+    );
+    if (!request || request.classId !== classroom.id) {
+      res.status(404).json({error: 'Join request not found.'});
+      return;
+    }
+    const updated = await decideWaitingRequest(
+      request.id,
+      input.decision === 'approve' ? 'approved' : 'rejected',
+    );
+    res.json({request: updated});
+  }),
+);
 
 app.post(
   '/api/classes/:classId/recordings/start',
   asyncHandler(async (req, res) => {
     const input = recordingStartSchema.parse(req.body);
-    const classroom = assertHostCode(
+    const classroom = await assertHostCode(
       paramValue(req.params.classId, 'classId'),
       input.hostAccessCode,
     );
@@ -250,7 +266,7 @@ app.post(
   '/api/classes/:classId/recordings/stop',
   asyncHandler(async (req, res) => {
     const input = recordingStopSchema.parse(req.body);
-    const classroom = assertHostCode(
+    const classroom = await assertHostCode(
       paramValue(req.params.classId, 'classId'),
       input.hostAccessCode,
     );
@@ -262,41 +278,47 @@ app.post(
   }),
 );
 
-app.get('/api/classes/:classId/recordings', (req, res) => {
-  const classroom = assertHostCode(
-    paramValue(req.params.classId, 'classId'),
-    String(req.query.hostAccessCode || ''),
-  );
-  res.json({recordings: listRecordings(classroom.id)});
-});
+app.get(
+  '/api/classes/:classId/recordings',
+  asyncHandler(async (req, res) => {
+    const classroom = await assertHostCode(
+      paramValue(req.params.classId, 'classId'),
+      String(req.query.hostAccessCode || ''),
+    );
+    res.json({recordings: await listRecordings(classroom.id)});
+  }),
+);
 
-app.post('/api/livekit/webhook', (req, res) => {
-  appendWebhookEvent(req.body);
-  const event = req.body as {
-    egress_info?: {egress_id?: string; status?: string; error?: string};
-  };
-  const egressId = event.egress_info?.egress_id;
-  if (egressId) {
-    const recording = findRecordingByEgressId(egressId);
-    if (recording) {
-      const status = String(event.egress_info?.status || '').toLowerCase();
-      updateRecording(recording.id, {
-        status:
-          status.includes('failed') || event.egress_info?.error
-            ? 'failed'
-            : status.includes('complete') || status.includes('ended')
-            ? 'complete'
-            : recording.status,
-        error: event.egress_info?.error,
-        stoppedAt:
-          status.includes('complete') || status.includes('failed')
-            ? new Date().toISOString()
-            : recording.stoppedAt,
-      });
+app.post(
+  '/api/livekit/webhook',
+  asyncHandler(async (req, res) => {
+    await appendWebhookEvent(req.body);
+    const event = req.body as {
+      egress_info?: {egress_id?: string; status?: string; error?: string};
+    };
+    const egressId = event.egress_info?.egress_id;
+    if (egressId) {
+      const recording = await findRecordingByEgressId(egressId);
+      if (recording) {
+        const status = String(event.egress_info?.status || '').toLowerCase();
+        await updateRecording(recording.id, {
+          status:
+            status.includes('failed') || event.egress_info?.error
+              ? 'failed'
+              : status.includes('complete') || status.includes('ended')
+              ? 'complete'
+              : recording.status,
+          error: event.egress_info?.error,
+          stoppedAt:
+            status.includes('complete') || status.includes('failed')
+              ? new Date().toISOString()
+              : recording.stoppedAt,
+        });
+      }
     }
-  }
-  res.json({ok: true});
-});
+    res.json({ok: true});
+  }),
+);
 
 app.use(
   (
@@ -315,9 +337,12 @@ app.use(
   },
 );
 
+await runAutoMigrations();
+
 app.listen(config.api.port, () => {
   console.log(
     `Classroom API listening on http://localhost:${config.api.port}`,
   );
   console.log(`LiveKit target: ${config.livekit.wsUrl}`);
+  console.log(`Data store: ${config.database.provider}`);
 });

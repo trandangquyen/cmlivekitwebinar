@@ -9,9 +9,9 @@ Statuses: `todo`, `in-progress`, `blocked`, `done`.
 | done | Local full Docker stack | LiveKit, Redis, Egress, API, web. |
 | done | Local create/join/waiting room flow | Basic flow implemented. |
 | done | Fix hidden LiveKit footer | CSS viewport fix applied. |
-| todo | PostgreSQL persistence | Replace in-memory store. |
-| todo | DB migrations | Choose migration tool and document commands. |
-| todo | Staging env config | Separate local/staging/prod config. |
+| done | PostgreSQL persistence | API can use PostgreSQL with `DATA_STORE=postgres`; full Docker enables it. |
+| done | DB migrations | Initial SQL migration and npm migration commands added. |
+| in-progress | Staging env config | DB env exists; separate local/staging/prod config still needed. |
 | todo | Production-safe secrets | Replace `devkey/secret`; add secret handling. |
 | todo | Recording Egress validation | Confirm playable files and metadata updates. |
 | todo | API tests | Class creation, join, waiting approval, recording endpoints. |

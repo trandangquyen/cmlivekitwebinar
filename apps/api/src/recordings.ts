@@ -80,7 +80,7 @@ export const startRoomRecording = async (
   layout: RecordingRecord['layout'] = 'speaker',
 ) => {
   const fileOutput = buildFileOutput(classroom);
-  const recording = createRecording({
+  const recording = await createRecording({
     classId: classroom.id,
     status: 'starting',
     layout,
@@ -94,12 +94,12 @@ export const startRoomRecording = async (
       layout,
       file_outputs: [fileOutput],
     });
-    return updateRecording(recording.id, {
+    return await updateRecording(recording.id, {
       status: 'active',
       egressId: String(result.egress_id || result.egressId || ''),
     });
   } catch (error) {
-    updateRecording(recording.id, {
+    await updateRecording(recording.id, {
       status: 'failed',
       error: error instanceof Error ? error.message : String(error),
       stoppedAt: new Date().toISOString(),
@@ -112,7 +112,7 @@ export const stopRoomRecording = async (input: {
   classroom: Classroom;
   recordingId: string;
 }) => {
-  const recording = getRecording(input.recordingId);
+  const recording = await getRecording(input.recordingId);
   if (!recording || recording.classId !== input.classroom.id) {
     throw new Error('Recording not found for this class.');
   }
@@ -120,13 +120,13 @@ export const stopRoomRecording = async (input: {
     throw new Error('Recording has no Egress id yet.');
   }
 
-  updateRecording(recording.id, {status: 'stopping'});
+  await updateRecording(recording.id, {status: 'stopping'});
   const token = await buildRoomRecordToken(input.classroom);
   await egressRpc('StopEgress', token, {
     egress_id: recording.egressId,
   });
 
-  return updateRecording(recording.id, {
+  return await updateRecording(recording.id, {
     status: 'complete',
     stoppedAt: new Date().toISOString(),
   });

@@ -25,6 +25,8 @@ const intFromEnv = (value: string | undefined, fallback: number) => {
   return Number.isFinite(parsed) ? parsed : fallback;
 };
 
+const databaseUrl = process.env.DATABASE_URL || '';
+
 export const config = {
   api: {
     port: intFromEnv(process.env.API_PORT, 4300),
@@ -44,6 +46,14 @@ export const config = {
       true,
     ),
     tokenTtl: process.env.CLASSROOM_TOKEN_TTL || '3h',
+  },
+  database: {
+    provider:
+      process.env.DATA_STORE ||
+      (databaseUrl ? 'postgres' : 'memory'),
+    url: databaseUrl,
+    ssl: boolFromEnv(process.env.DATABASE_SSL, false),
+    autoMigrate: boolFromEnv(process.env.DB_AUTO_MIGRATE, false),
   },
   recording: {
     outputMode: process.env.RECORDING_OUTPUT_MODE || 'local',
