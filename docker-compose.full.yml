@@ -1,0 +1,87 @@
+services:
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+
+  livekit:
+    image: livekit/livekit-server:latest
+    command: ["--config", "/etc/livekit.yaml"]
+    depends_on:
+      redis:
+        condition: service_healthy
+    ports:
+      - "7880:7880"
+      - "7881:7881"
+      - "50000-50100:50000-50100/udp"
+    volumes:
+      - ./infra/livekit/livekit.full.yaml:/etc/livekit.yaml:ro
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "wget -qO- http://127.0.0.1:7880/ || exit 1"
+        ]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+
+  egress:
+    image: livekit/egress:latest
+    depends_on:
+      redis:
+        condition: service_healthy
+      livekit:
+        condition: service_started
+    cap_add:
+      - SYS_ADMIN
+    environment:
+      EGRESS_CONFIG_FILE: /etc/egress.yaml
+    volumes:
+      - ./infra/livekit/egress.full.yaml:/etc/egress.yaml:ro
+      - ./recordings:/out/recordings
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    depends_on:
+      livekit:
+        condition: service_started
+    environment:
+      API_PORT: 4300
+      FRONTEND_ORIGIN: http://localhost:8080
+      PUBLIC_API_BASE_URL: http://localhost:4300
+      LIVEKIT_WS_URL: ws://localhost:7880
+      LIVEKIT_HTTP_URL: http://livekit:7880
+      LIVEKIT_API_KEY: devkey
+      LIVEKIT_API_SECRET: secret
+      CLASSROOM_DEFAULT_WAITING_ROOM: "true"
+      RECORDING_OUTPUT_MODE: local
+      RECORDING_LOCAL_PREFIX: /out/recordings
+    ports:
+      - "4300:4300"
+    volumes:
+      - ./recordings:/out/recordings
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        VITE_API_BASE_URL: http://localhost:4300
+    depends_on:
+      - api
+    ports:
+      - "8080:80"
+
+volumes:
+  redis-data:

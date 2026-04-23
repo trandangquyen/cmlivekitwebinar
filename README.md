@@ -1,0 +1,94 @@
+# LiveKit Classroom
+
+Self-hosted classroom project for replacing Agora App Builder with an open-source WebRTC SFU stack.
+
+LiveKit has paid Cloud plans, but the media server, SDKs, and Egress service can be self-hosted. This project is wired for self-hosting first: local/on-prem LiveKit + Redis + Egress, with AWS fallback handled by changing environment endpoints.
+
+## What is included
+
+- `apps/api`: Express API for class creation, join tokens, waiting room approval, recording start/stop, and LiveKit webhook intake.
+- `apps/web`: React/Vite web classroom using LiveKit React Components with camera, mic, screen share, chat, grid/focus layout, and host recording controls.
+- `docker-compose.livekit.yml`: local/on-prem LiveKit stack with Redis and Egress.
+
+## Project Coordination
+
+This project is expected to continue across multiple work sessions and agents. Start every session with:
+
+1. `AGENTS.md`
+2. `docs/PROJECT_STATUS.md`
+3. `docs/ROADMAP.md`
+4. `docs/BACKLOG.md`
+
+Use these supporting docs when needed:
+
+- `docs/DECISIONS.md`: architecture decisions.
+- `docs/STAGING_CHECKLIST.md`: staging readiness.
+- `docs/PRODUCTION_CHECKLIST.md`: production readiness.
+- `docs/HANDOFF_TEMPLATE.md`: handoff format for the next agent.
+
+## Quick Start
+
+1. Copy `.env.example` to `.env` and keep the default dev keys for local testing.
+2. Start LiveKit media stack only:
+
+   ```powershell
+   docker compose -f docker-compose.livekit.yml up
+   ```
+
+3. Install dependencies and run both apps:
+
+   ```powershell
+   npm install
+   npm run dev:api
+   npm run dev:web
+   ```
+
+4. Open `http://localhost:5173`, create a class, then use the host and student links in separate browser windows.
+
+## Full Docker Stack On Windows
+
+Use this when you want Docker to run LiveKit, Redis, Egress, the API, and the web app together.
+
+1. Check prerequisites:
+
+   ```powershell
+   powershell -ExecutionPolicy Bypass -File scripts/check-docker.ps1
+   ```
+
+2. If Docker is missing, install Docker Desktop from an elevated PowerShell session:
+
+   ```powershell
+   powershell -ExecutionPolicy Bypass -File scripts/install-docker-desktop.ps1 -InstallWsl
+   ```
+
+   Reboot if Windows asks, then start Docker Desktop once.
+
+   If your current terminal is not elevated, use:
+
+   ```powershell
+   powershell -ExecutionPolicy Bypass -File scripts/open-admin-installer.ps1
+   ```
+
+   Approve the Windows UAC prompt, then let the elevated installer finish.
+
+3. Start everything:
+
+   ```powershell
+   powershell -ExecutionPolicy Bypass -File scripts/start-stack.ps1 -Full
+   ```
+
+4. Open:
+
+   - Web: `http://localhost:8080`
+   - API health: `http://localhost:4300/api/health`
+   - LiveKit WebSocket: `ws://localhost:7880`
+
+For production on a public server, update `infra/livekit/*.yaml` with the real domain, set `rtc.use_external_ip=true` or an explicit NAT IP, replace `devkey/secret`, and widen the UDP port range.
+
+## Production Notes
+
+- Replace `devkey` and `secret`.
+- Set `rtc.use_external_ip=true` or configure NAT/public IP according to the on-prem network.
+- Expand the UDP port range beyond `50000-50100` for real load.
+- Run multiple LiveKit nodes behind a load balancer and shared Redis; pin each room to one node.
+- Run separate Egress workers. Room composite recordings are CPU-heavy and should not compete with media nodes.

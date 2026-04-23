@@ -1,0 +1,21 @@
+{
+  "name": "livekit-classroom",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Self-hosted LiveKit classroom platform for web-based education.",
+  "workspaces": [
+    "apps/api",
+    "apps/web"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace @classroom/api",
+    "dev:api": "npm run dev --workspace @classroom/api",
+    "dev:web": "npm run dev --workspace @classroom/web",
+    "build": "npm run build --workspace @classroom/api && npm run build --workspace @classroom/web",
+    "start": "npm run start --workspace @classroom/api",
+    "typecheck": "npm run typecheck --workspace @classroom/api && npm run typecheck --workspace @classroom/web"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
