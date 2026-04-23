@@ -4,21 +4,21 @@ Statuses: `todo`, `in-progress`, `blocked`, `done`.
 
 ## P0: Required Before Staging
 
-| Status      | Task                                | Notes                                                                                                   |
-| ----------- | ----------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| done        | Local full Docker stack             | LiveKit, Redis, Egress, API, web.                                                                       |
-| done        | Local create/join/waiting room flow | Basic flow implemented.                                                                                 |
-| done        | Fix hidden LiveKit footer           | CSS viewport fix applied.                                                                               |
-| done        | PostgreSQL persistence              | API can use PostgreSQL with `DATA_STORE=postgres`; full Docker enables it.                              |
-| done        | DB migrations                       | Initial SQL migration and npm migration commands added.                                                 |
-| done        | Staging env config                  | `.env.local.example`, `.env.staging.example`, and `.env.production.example` added.                      |
-| todo        | Production-safe secrets             | Replace `devkey/secret`; add secret handling.                                                           |
-| todo        | Recording Egress validation         | Confirm playable files and metadata updates.                                                            |
-| in-progress | API tests                           | Initial class, join, waiting room, and access guard tests added. Recording endpoint tests still needed. |
-| in-progress | Web smoke tests                     | Initial create-class Playwright smoke test added. Join/waiting smoke tests still needed.                |
-| in-progress | Reverse proxy/HTTPS                 | Caddy example added; staging deployment and certificate validation still needed.                        |
-| todo        | Staging runbook                     | Exact deployment and rollback steps.                                                                    |
-| done        | Agent Review gate                   | `agent-review` Codex skill installed and documented.                                                    |
+| Status      | Task                                | Notes                                                                                                 |
+| ----------- | ----------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| done        | Local full Docker stack             | LiveKit, Redis, Egress, API, web.                                                                     |
+| done        | Local create/join/waiting room flow | Basic flow implemented.                                                                               |
+| done        | Fix hidden LiveKit footer           | CSS viewport fix applied.                                                                             |
+| done        | PostgreSQL persistence              | API can use PostgreSQL with `DATA_STORE=postgres`; full Docker enables it.                            |
+| done        | DB migrations                       | Initial SQL migration and npm migration commands added.                                               |
+| done        | Staging env config                  | `.env.local.example`, `.env.staging.example`, and `.env.production.example` added.                    |
+| done        | Production-safe secrets             | API strict config guard blocks placeholder/dev secrets and unsafe staging/production config.          |
+| todo        | Recording Egress validation         | Confirm playable files and metadata updates.                                                          |
+| in-progress | API tests                           | Class, join, waiting room, access guard, recording, webhook, and config guard coverage added.         |
+| in-progress | Web smoke tests                     | Initial create-class Playwright smoke test added. Join/waiting smoke tests still needed.              |
+| in-progress | Reverse proxy/HTTPS                 | Caddy example uses staging/prod env placeholders; certificate validation still needed on a real host. |
+| done        | Staging runbook                     | `docs/STAGING_RUNBOOK.md` covers deploy, validation, and rollback steps.                              |
+| done        | Agent Review gate                   | `agent-review` Codex skill installed and documented.                                                  |
 
 ## P1: Required Before Internal Pilot
 

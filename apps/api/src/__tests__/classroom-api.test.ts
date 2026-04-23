@@ -4,6 +4,12 @@ import path from 'node:path';
 import request from 'supertest';
 import {beforeEach, describe, expect, it, vi} from 'vitest';
 import {createApp} from '../app.js';
+import {
+  config,
+  getDeploymentConfigIssues,
+  validateDeploymentConfig,
+  type AppConfig,
+} from '../config.js';
 import {recordingPatchFromLocalManifest} from '../recordings.js';
 import {resetMemoryStore} from '../store.js';
 
@@ -276,5 +282,103 @@ describe('classroom API', () => {
         }),
       )
       .expect(401);
+  });
+});
+
+describe('deployment config validation', () => {
+  const validStrictConfig = (): AppConfig => ({
+    ...config,
+    deployment: {
+      appEnv: 'staging',
+      strictConfig: true,
+    },
+    api: {
+      ...config.api,
+      frontendOrigin: 'https://classroom-staging.example.com',
+      publicApiBaseUrl: 'https://classroom-staging.example.com',
+    },
+    livekit: {
+      ...config.livekit,
+      wsUrl: 'wss://livekit-staging.example.com',
+      httpUrl: 'http://livekit:7880',
+      apiKey: 'staging-livekit-key',
+      apiSecret: 'staging-livekit-secret-with-real-entropy',
+    },
+    database: {
+      ...config.database,
+      provider: 'postgres',
+      url: 'postgresql://classroom:staging-password@postgres:5432/classroom',
+      autoMigrate: false,
+    },
+    recording: {
+      ...config.recording,
+      outputMode: 's3',
+      s3: {
+        ...config.recording.s3,
+        accessKey: 'staging-access-key',
+        secret: 'staging-storage-secret',
+        bucket: 'classroom-recordings-staging',
+      },
+    },
+  });
+
+  it('accepts a strict staging configuration with real secrets and public TLS URLs', () => {
+    expect(getDeploymentConfigIssues(validStrictConfig())).toEqual([]);
+  });
+
+  it('blocks staging when local defaults or placeholders are still configured', () => {
+    const unsafeConfig: AppConfig = {
+      ...validStrictConfig(),
+      api: {
+        ...config.api,
+        frontendOrigin: 'http://localhost:5173',
+        publicApiBaseUrl: 'http://localhost:4300',
+      },
+      livekit: {
+        ...config.livekit,
+        wsUrl: 'ws://localhost:7880',
+        apiKey: 'devkey',
+        apiSecret: 'secret',
+      },
+      database: {
+        ...config.database,
+        provider: 'memory',
+        url: 'postgresql://classroom:replace-me@localhost:5432/classroom_dev',
+        autoMigrate: true,
+      },
+      recording: {
+        ...config.recording,
+        outputMode: 's3',
+        s3: {
+          ...config.recording.s3,
+          accessKey: 'replace-me',
+          secret: 'replace-me',
+          bucket: 'replace-me',
+        },
+      },
+    };
+
+    expect(() => validateDeploymentConfig(unsafeConfig)).toThrow(
+      'Unsafe staging configuration',
+    );
+    expect(getDeploymentConfigIssues(unsafeConfig)).toEqual(
+      expect.arrayContaining([
+        'FRONTEND_ORIGIN must use https:// for staging/production.',
+        'FRONTEND_ORIGIN must not point at localhost in staging/production.',
+        'PUBLIC_API_BASE_URL must use https:// for staging/production.',
+        'PUBLIC_API_BASE_URL must not point at localhost in staging/production.',
+        'LIVEKIT_WS_URL must use wss:// for staging/production.',
+        'LIVEKIT_WS_URL must not point at localhost in staging/production.',
+        'LIVEKIT_API_KEY must be set to a non-placeholder value.',
+        'LIVEKIT_API_SECRET must be set to a non-placeholder value.',
+        'DATA_STORE must be postgres for staging/production.',
+        'DATABASE_URL must be set to a non-placeholder value.',
+        'DATABASE_URL must not use the local classroom_dev password.',
+        'DB_AUTO_MIGRATE must be false; run migrations explicitly before deploy.',
+        'S3_ACCESS_KEY must be set to a non-placeholder value.',
+        'S3_SECRET must be set to a non-placeholder value.',
+        'S3_BUCKET must be set to a non-placeholder value.',
+      ]),
+    );
   });
 });

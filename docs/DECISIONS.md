@@ -121,3 +121,19 @@ Consequences:
 
 - Large tasks are not done while Agent Review reports blocking findings.
 - Review output must lead with concrete findings, severity, blocking status, tests, and production readiness.
+
+## ADR-009: Strict Startup Guard For Staging And Production
+
+Decision: The API validates staging and production configuration at startup when `APP_ENV` is `staging` or `production`, or when `STRICT_CONFIG=true`.
+
+Reason:
+
+- Placeholder LiveKit keys, database URLs, storage credentials, localhost public URLs, and in-memory storage are acceptable for local development but unsafe for staging rehearsals.
+- Migrations should run explicitly before deployment outside local full-stack development.
+- Failing fast during API startup is clearer than discovering bad configuration during a live class or recording test.
+
+Consequences:
+
+- Staging and production must set real secrets before the API will boot.
+- `DATA_STORE=postgres` and `DB_AUTO_MIGRATE=false` are enforced in strict environments.
+- Local Docker development remains available with `APP_ENV=local` and `STRICT_CONFIG=false`.

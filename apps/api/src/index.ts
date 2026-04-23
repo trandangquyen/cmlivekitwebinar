@@ -1,7 +1,8 @@
 import {createApp} from './app.js';
-import {config} from './config.js';
+import {config, validateDeploymentConfig} from './config.js';
 import {runAutoMigrations} from './migrations.js';
 
+validateDeploymentConfig();
 await runAutoMigrations();
 
 const app = createApp();

@@ -16,6 +16,8 @@
   - DB credentials
   - storage credentials
 - [ ] `.env.staging.example` copied into the deployment secret store with real values.
+- [ ] `APP_ENV=staging` and `STRICT_CONFIG=true` are set.
+- [ ] API startup guard passes with no unsafe configuration errors.
 - [ ] Reverse proxy based on `infra/reverse-proxy/Caddyfile.example` or equivalent is deployed.
 - [ ] TURN/coturn is deployed or explicitly waived after network testing.
 
@@ -57,6 +59,7 @@ Implementation note: the API supports `DATA_STORE=postgres`, `DATABASE_URL`, and
 - [ ] Web/proxy logs available.
 - [ ] Restart procedure documented.
 - [ ] Rollback procedure documented.
+- [ ] `docs/STAGING_RUNBOOK.md` has been followed or explicitly updated for the staging host.
 
 ## Acceptance
 

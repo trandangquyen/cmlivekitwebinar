@@ -16,6 +16,8 @@ Do not start production classes until staging is stable and this checklist is ma
 ## Security
 
 - [ ] Dev keys removed.
+- [ ] `APP_ENV=production` and `STRICT_CONFIG=true` are set.
+- [ ] API startup guard passes with no unsafe configuration errors.
 - [ ] Secret rotation process documented.
 - [ ] API rate limiting added.
 - [ ] CORS locked to production domains.

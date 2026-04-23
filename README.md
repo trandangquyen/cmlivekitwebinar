@@ -25,6 +25,7 @@ Use these supporting docs when needed:
 
 - `docs/DECISIONS.md`: architecture decisions.
 - `docs/STAGING_CHECKLIST.md`: staging readiness.
+- `docs/STAGING_RUNBOOK.md`: staging deployment, validation, and rollback steps.
 - `docs/PRODUCTION_CHECKLIST.md`: production readiness.
 - `docs/PRODUCTION_READINESS_PLAN.md`: production gates for 25 concurrent classes.
 - `docs/CAPACITY_TEST_PLAN.md`: load and soak test ladder for 25-class proof.
@@ -86,6 +87,8 @@ npm run migrate:prod --workspace @classroom/api
 ```
 
 Keep `DB_AUTO_MIGRATE=false` outside local full-stack development unless the deployment process intentionally owns automatic migrations.
+
+Staging and production profiles should set `APP_ENV=staging` or `APP_ENV=production` with `STRICT_CONFIG=true`. The API startup guard rejects placeholder LiveKit/storage/database secrets, localhost public URLs, non-Postgres storage, and automatic migrations in strict environments.
 
 ## Full Docker Stack On Windows
 
