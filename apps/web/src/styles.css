@@ -68,7 +68,7 @@ button {
 
 .eyebrow {
   margin: 0 0 10px;
-  color: #8fb8ff;
+  color: #4ABEA7;
   font-size: 13px;
   font-weight: 700;
   text-transform: uppercase;
@@ -126,8 +126,8 @@ input {
 }
 
 input:focus {
-  border-color: #55a6ff;
-  box-shadow: 0 0 0 3px rgba(85, 166, 255, 0.18);
+  border-color: #4ABEA7;
+  box-shadow: 0 0 0 3px rgba(74, 190, 167, 0.18);
 }
 
 .inline-toggle {
@@ -141,7 +141,7 @@ input:focus {
 .inline-toggle input {
   width: 18px;
   min-height: 18px;
-  accent-color: #2f8cff;
+  accent-color: #4ABEA7;
 }
 
 .device-row,
@@ -171,7 +171,7 @@ input:focus {
 }
 
 .primary-button {
-  background: #2f8cff;
+  background: #4ABEA7;
 }
 
 .secondary-button {
@@ -251,7 +251,7 @@ button:disabled {
 }
 
 .empty-state svg {
-  color: #55a6ff;
+  color: #4ABEA7;
 }
 
 .segmented {
@@ -273,7 +273,7 @@ button:disabled {
 }
 
 .segmented button.active {
-  background: #2f8cff;
+  background: #4ABEA7;
   color: #fff;
 }
 
