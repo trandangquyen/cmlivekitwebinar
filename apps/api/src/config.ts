@@ -39,6 +39,7 @@ export const config = {
     httpUrl: process.env.LIVEKIT_HTTP_URL || 'http://localhost:7880',
     apiKey: process.env.LIVEKIT_API_KEY || 'devkey',
     apiSecret: process.env.LIVEKIT_API_SECRET || 'secret',
+    verifyWebhooks: boolFromEnv(process.env.LIVEKIT_WEBHOOK_VERIFY, true),
   },
   classroom: {
     defaultWaitingRoom: boolFromEnv(

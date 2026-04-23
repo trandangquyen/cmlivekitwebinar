@@ -41,7 +41,7 @@ The final production target is 25 simultaneous classes with 16 participants per 
 2. Start LiveKit media stack only:
 
    ```powershell
-   docker compose -f docker-compose.livekit.yml up
+   powershell -ExecutionPolicy Bypass -File scripts/start-stack.ps1
    ```
 
 3. Install dependencies and run both apps:
@@ -124,7 +124,9 @@ Use this when you want Docker to run PostgreSQL, LiveKit, Redis, Egress, the API
    - API health: `http://localhost:4300/api/health`
    - LiveKit WebSocket: `ws://localhost:7880`
 
-The local Docker LiveKit config advertises `rtc.node_ip: 127.0.0.1` so browser tabs on the same Windows machine can reach the host-mapped WebRTC UDP ports. If you join from another device on the LAN, validate Egress recording, or deploy to staging, replace this with the host LAN/public IP or use `rtc.use_external_ip=true` as appropriate for that network.
+**Note on Frontend Development**: In full Docker mode, the web app on `:8080` is a compiled static bundle served by Nginx. Hot-reloading is not available. To see code changes made in `apps/web`, you must either rebuild the stack (`scripts/start-stack.ps1 -Full -Rebuild`) or run the local Vite dev server directly (`npm run dev:web` on `:5173`).
+
+The local Docker scripts detect the current Windows host LAN IP and pass it to LiveKit as `LIVEKIT_NODE_IP`, so browser tabs and the Egress container can both reach the host-mapped WebRTC media ports. When moving to another machine or network, rerun `scripts/start-stack.ps1` instead of editing `infra/livekit/*.yaml`. If automatic detection picks the wrong interface, set `$env:LIVEKIT_NODE_IP="x.x.x.x"` before running the script. For staging or production, use the real host/public IP or `rtc.use_external_ip=true` as appropriate for that network.
 
 For production on a public server, update `infra/livekit/*.yaml` with the real domain, set `rtc.use_external_ip=true` or an explicit NAT IP, replace `devkey/secret`, and widen the UDP port range.
 

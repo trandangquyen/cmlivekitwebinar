@@ -17,6 +17,7 @@
     "lucide-react": "latest",
     "react": "latest",
     "react-dom": "latest",
+    "sonner": "^2.0.7",
     "vite": "latest"
   },
   "devDependencies": {

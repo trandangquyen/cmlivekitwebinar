@@ -1,5 +1,6 @@
 import cors from 'cors';
 import express from 'express';
+import {WebhookReceiver} from 'livekit-server-sdk';
 import {z} from 'zod';
 import {config} from './config.js';
 import {
@@ -15,9 +16,14 @@ import {
   listWaitingRequests,
   updateRecording,
 } from './store.js';
-import {startRoomRecording, stopRoomRecording} from './recordings.js';
+import {
+  recordingPatchFromEgressInfo,
+  startRoomRecording,
+  stopRoomRecording,
+  syncRecordingArtifacts,
+} from './recordings.js';
 import {buildParticipantJoinPayload} from './tokens.js';
-import type {ClassroomRole} from './types.js';
+import type {Classroom, ClassroomRole} from './types.js';
 
 const createClassSchema = z.object({
   title: z.string().trim().min(2).max(120),
@@ -44,6 +50,20 @@ const recordingStopSchema = z.object({
   hostAccessCode: z.string().trim().min(4),
   recordingId: z.string().trim().min(1),
 });
+
+type PublicClassroom = Pick<
+  Classroom,
+  'id' | 'title' | 'waitingRoomEnabled' | 'createdAt'
+>;
+
+type LiveKitWebhookEvent = {
+  egress_info?: {egress_id?: string; status?: string; error?: string};
+};
+
+const livekitWebhookReceiver = new WebhookReceiver(
+  config.livekit.apiKey,
+  config.livekit.apiSecret,
+);
 
 const asyncHandler =
   (handler: express.RequestHandler): express.RequestHandler =>
@@ -97,6 +117,69 @@ const assertAccessCode = async (
   return classroom;
 };
 
+const toPublicClassroom = (classroom: Classroom): PublicClassroom => ({
+  id: classroom.id,
+  title: classroom.title,
+  waitingRoomEnabled: classroom.waitingRoomEnabled,
+  createdAt: classroom.createdAt,
+});
+
+const parseWebhookPayload = (body: unknown): LiveKitWebhookEvent => {
+  if (Buffer.isBuffer(body)) {
+    const rawBody = body.toString('utf8');
+    if (!rawBody) {
+      return {};
+    }
+    try {
+      return JSON.parse(rawBody) as LiveKitWebhookEvent;
+    } catch {
+      throw Object.assign(new Error('Invalid webhook payload.'), {
+        statusCode: 400,
+      });
+    }
+  }
+  if (typeof body === 'string') {
+    if (!body.trim()) {
+      return {};
+    }
+    try {
+      return JSON.parse(body) as LiveKitWebhookEvent;
+    } catch {
+      throw Object.assign(new Error('Invalid webhook payload.'), {
+        statusCode: 400,
+      });
+    }
+  }
+  if (body && typeof body === 'object') {
+    return body as LiveKitWebhookEvent;
+  }
+  return {};
+};
+
+const receiveWebhookEvent = async (
+  req: express.Request,
+): Promise<LiveKitWebhookEvent> => {
+  if (!config.livekit.verifyWebhooks) {
+    return parseWebhookPayload(req.body);
+  }
+
+  const rawBody = Buffer.isBuffer(req.body)
+    ? req.body.toString('utf8')
+    : typeof req.body === 'string'
+      ? req.body
+      : JSON.stringify(req.body || {});
+  try {
+    return (await livekitWebhookReceiver.receive(
+      rawBody,
+      req.header('Authorization') || '',
+    )) as LiveKitWebhookEvent;
+  } catch {
+    throw Object.assign(new Error('Invalid LiveKit webhook signature.'), {
+      statusCode: 401,
+    });
+  }
+};
+
 export const createApp = () => {
   const app = express();
 
@@ -104,6 +187,33 @@ export const createApp = () => {
     cors({
       origin: config.api.frontendOrigin,
       credentials: true,
+    }),
+  );
+
+  app.post(
+    '/api/livekit/webhook',
+    express.raw({
+      type: ['application/webhook+json', 'application/json'],
+      limit: '1mb',
+    }),
+    asyncHandler(async (req, res) => {
+      const event = await receiveWebhookEvent(req);
+      const egressId = event.egress_info?.egress_id;
+      if (egressId) {
+        const recording = await findRecordingByEgressId(egressId);
+        if (recording) {
+          await updateRecording(recording.id, {
+            ...recordingPatchFromEgressInfo(
+              event.egress_info || {},
+              recording.status,
+            ),
+          });
+        }
+      }
+      res.json({ok: true});
+      void appendWebhookEvent(event).catch(error => {
+        console.error('Failed to persist LiveKit webhook event', error);
+      });
     }),
   );
   app.use(express.json({limit: '1mb'}));
@@ -120,7 +230,8 @@ export const createApp = () => {
   app.get(
     '/api/classes',
     asyncHandler(async (_req, res) => {
-      res.json({classes: await listClassrooms()});
+      const classes = await listClassrooms();
+      res.json({classes: classes.map(toPublicClassroom)});
     }),
   );
 
@@ -143,7 +254,7 @@ export const createApp = () => {
         res.status(404).json({error: 'Class not found.'});
         return;
       }
-      res.json({classroom});
+      res.json({classroom: toPublicClassroom(classroom)});
     }),
   );
 
@@ -285,38 +396,11 @@ export const createApp = () => {
         paramValue(req.params.classId, 'classId'),
         String(req.query.hostAccessCode || ''),
       );
-      res.json({recordings: await listRecordings(classroom.id)});
-    }),
-  );
-
-  app.post(
-    '/api/livekit/webhook',
-    asyncHandler(async (req, res) => {
-      await appendWebhookEvent(req.body);
-      const event = req.body as {
-        egress_info?: {egress_id?: string; status?: string; error?: string};
-      };
-      const egressId = event.egress_info?.egress_id;
-      if (egressId) {
-        const recording = await findRecordingByEgressId(egressId);
-        if (recording) {
-          const status = String(event.egress_info?.status || '').toLowerCase();
-          await updateRecording(recording.id, {
-            status:
-              status.includes('failed') || event.egress_info?.error
-                ? 'failed'
-                : status.includes('complete') || status.includes('ended')
-                  ? 'complete'
-                  : recording.status,
-            error: event.egress_info?.error,
-            stoppedAt:
-              status.includes('complete') || status.includes('failed')
-                ? new Date().toISOString()
-                : recording.stoppedAt,
-          });
-        }
-      }
-      res.json({ok: true});
+      const recordings = await listRecordings(classroom.id);
+      const syncedRecordings = await Promise.all(
+        recordings.map(recording => syncRecordingArtifacts(recording)),
+      );
+      res.json({recordings: syncedRecordings});
     }),
   );
 

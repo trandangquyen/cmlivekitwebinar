@@ -29,10 +29,12 @@ import {
   startRecording,
   stopRecording,
 } from './api';
+import {toast} from 'sonner';
 import type {
   Classroom,
   ClassroomRole,
   JoinedSession,
+  PublicClassroom,
   RecordingRecord,
   WaitingRequest,
 } from './types';
@@ -60,6 +62,7 @@ const parseRoute = (): Route => {
 
 const copyText = async (value: string) => {
   await navigator.clipboard.writeText(value);
+  toast.success('Copied to clipboard!');
 };
 
 const liveRecordingStatuses = new Set<RecordingRecord['status']>([
@@ -70,6 +73,13 @@ const liveRecordingStatuses = new Set<RecordingRecord['status']>([
 
 const isLiveRecording = (recording: RecordingRecord) =>
   liveRecordingStatuses.has(recording.status);
+
+const terminalRecordingStatuses = new Set<RecordingRecord['status']>([
+  'complete',
+  'failed',
+]);
+
+const RECORDING_TERMINAL_NOTICE_TTL_MS = 10_000;
 
 const formatDisconnectReason = (reason?: DisconnectReason) => {
   const reasonName =
@@ -196,8 +206,11 @@ function HomePage({navigate}: {navigate: (path: string) => void}) {
     try {
       const {classroom} = await createClassroom({title, waitingRoomEnabled});
       setCreated(classroom);
+      toast.success('Class created successfully');
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      const msg = err instanceof Error ? err.message : String(err);
+      setError(msg);
+      toast.error(msg);
     } finally {
       setBusy(false);
     }
@@ -318,7 +331,7 @@ function JoinPage({
   onJoined: (session: JoinedSession) => void;
   onBack: () => void;
 }) {
-  const [classroom, setClassroom] = useState<Classroom | null>(null);
+  const [classroom, setClassroom] = useState<PublicClassroom | null>(null);
   const [name, setName] = useState('');
   const [role, setRole] = useState<ClassroomRole>(initialRole);
   const [accessCode, setAccessCode] = useState(initialCode);
@@ -331,7 +344,11 @@ function JoinPage({
   useEffect(() => {
     getClassroom(classId)
       .then(({classroom}) => setClassroom(classroom))
-      .catch(err => setError(err instanceof Error ? err.message : String(err)));
+      .catch(err => {
+        const msg = err instanceof Error ? err.message : String(err);
+        setError(msg);
+        toast.error(msg);
+      });
   }, [classId]);
 
   useEffect(() => {
@@ -343,6 +360,8 @@ function JoinPage({
         const result = await pollJoinRequest(waitingRequestId);
         if (result.status === 'joined') {
           window.clearInterval(timer);
+          toast.dismiss('waiting-toast');
+          toast.success('Joined classroom');
           onJoined({
             ...result,
             accessCode,
@@ -353,7 +372,9 @@ function JoinPage({
       } catch (err) {
         window.clearInterval(timer);
         setWaitingRequestId('');
-        setError(err instanceof Error ? err.message : String(err));
+        const msg = err instanceof Error ? err.message : String(err);
+        setError(msg);
+        toast.error(msg);
       }
     }, 2000);
     return () => window.clearInterval(timer);
@@ -373,7 +394,9 @@ function JoinPage({
       });
       if (result.status === 'waiting') {
         setWaitingRequestId(result.requestId);
+        toast.info('Waiting for host approval...', {id: 'waiting-toast'});
       } else {
+        toast.success('Joined classroom');
         onJoined({
           ...result,
           accessCode,
@@ -382,7 +405,9 @@ function JoinPage({
         });
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      const msg = err instanceof Error ? err.message : String(err);
+      setError(msg);
+      toast.error(msg);
     } finally {
       setBusy(false);
     }
@@ -513,10 +538,16 @@ function ClassroomRoom({
         video={session.initialVideo}
         options={roomOptions}
         onConnected={() => setRoomIssue('')}
-        onError={error => setRoomIssue(formatRoomError(error))}
-        onMediaDeviceFailure={(failure, kind) =>
-          setRoomIssue(formatMediaDeviceFailure(failure, kind))
-        }
+        onError={error => {
+          const msg = formatRoomError(error);
+          setRoomIssue(msg);
+          toast.error(msg);
+        }}
+        onMediaDeviceFailure={(failure, kind) => {
+          const msg = formatMediaDeviceFailure(failure, kind);
+          setRoomIssue(msg);
+          toast.error(msg);
+        }}
         onDisconnected={reason => {
           if (
             userLeavingRef.current ||
@@ -524,7 +555,9 @@ function ClassroomRoom({
           ) {
             return;
           }
-          onDisconnected(formatDisconnectReason(reason));
+          const msg = formatDisconnectReason(reason);
+          toast.error(msg);
+          onDisconnected(msg);
         }}
       >
         <RoomAudioRenderer />
@@ -560,17 +593,28 @@ function ClassroomTopbar({
   const [recordings, setRecordings] = useState<RecordingRecord[]>([]);
   const [recordingError, setRecordingError] = useState('');
   const [recordingBusy, setRecordingBusy] = useState(false);
+  const hiddenTerminalRecordingIdsRef = useRef(new Set<string>());
+  const terminalRecordingHideTimersRef = useRef(new Map<string, number>());
 
   const isHost = session.role === 'host';
   const topbarMessage = roomIssue || recordingError;
+
+  const filterVisibleRecordings = (items: RecordingRecord[]) =>
+    items.filter(
+      recording =>
+        isLiveRecording(recording) ||
+        !hiddenTerminalRecordingIdsRef.current.has(recording.id),
+    );
 
   const refreshRecordings = async () => {
     if (!isHost) {
       return;
     }
+
     const result = await listRecordings(session.classId, session.accessCode);
-    setRecordings(result.recordings);
-    setActiveRecording(result.recordings.find(isLiveRecording) || null);
+    const visibleRecordings = filterVisibleRecordings(result.recordings);
+    setRecordings(visibleRecordings);
+    setActiveRecording(visibleRecordings.find(isLiveRecording) || null);
   };
 
   const toggleRecording = async () => {
@@ -588,6 +632,7 @@ function ClassroomTopbar({
           layout: 'speaker',
         });
         setActiveRecording(isLiveRecording(recording) ? recording : null);
+        toast.success('Recording started');
         await refreshRecordings();
       } else {
         const {recording} = await stopRecording({
@@ -599,10 +644,13 @@ function ClassroomTopbar({
         setRecordings(current =>
           current.map(item => (item.id === recording.id ? recording : item)),
         );
+        toast.success('Recording stopped');
         await refreshRecordings();
       }
     } catch (err) {
-      setRecordingError(err instanceof Error ? err.message : String(err));
+      const msg = err instanceof Error ? err.message : String(err);
+      setRecordingError(msg);
+      toast.error(msg);
       await refreshRecordings().catch(() => {});
     } finally {
       setRecordingBusy(false);
@@ -624,12 +672,57 @@ function ClassroomTopbar({
     };
   }, []);
 
+  useEffect(() => {
+    recordings
+      .filter(recording => terminalRecordingStatuses.has(recording.status))
+      .forEach(recording => {
+        if (hiddenTerminalRecordingIdsRef.current.has(recording.id)) {
+          return;
+        }
+        if (terminalRecordingHideTimersRef.current.has(recording.id)) {
+          return;
+        }
+
+        if (recording.status === 'complete') {
+          toast.success(
+            `Recording complete: ${recording.outputPath || 'Saved'}`,
+          );
+        } else if (recording.status === 'failed') {
+          toast.error(
+            `Recording failed: ${recording.error || 'Unknown error'}`,
+          );
+        }
+
+        const timeoutId = window.setTimeout(() => {
+          hiddenTerminalRecordingIdsRef.current.add(recording.id);
+          terminalRecordingHideTimersRef.current.delete(recording.id);
+          setRecordings(current =>
+            current.filter(item => item.id !== recording.id),
+          );
+        }, RECORDING_TERMINAL_NOTICE_TTL_MS);
+
+        terminalRecordingHideTimersRef.current.set(recording.id, timeoutId);
+      });
+  }, [recordings]);
+
+  useEffect(
+    () => () => {
+      terminalRecordingHideTimersRef.current.forEach(timeoutId => {
+        window.clearTimeout(timeoutId);
+      });
+      terminalRecordingHideTimersRef.current.clear();
+    },
+    [],
+  );
+
   const recordingButtonDisabled =
     recordingBusy || activeRecording?.status === 'stopping';
   const recordingButtonLabel = activeRecording
-    ? recordingBusy || activeRecording.status === 'stopping'
+    ? recordingBusy
       ? 'Stopping...'
-      : 'Stop rec'
+      : activeRecording.status === 'stopping'
+        ? 'Stopping...'
+        : 'Stop rec'
     : recordingBusy
       ? 'Starting...'
       : 'Record';
@@ -682,16 +775,6 @@ function ClassroomTopbar({
       {topbarMessage ? (
         <div className="topbar-message error-text">{topbarMessage}</div>
       ) : null}
-      {isHost && recordings.length ? (
-        <div className="recording-list">
-          {recordings.slice(0, 3).map(recording => (
-            <span key={recording.id}>
-              {recording.status}
-              {recording.outputPath ? `: ${recording.outputPath}` : ''}
-            </span>
-          ))}
-        </div>
-      ) : null}
     </header>
   );
 }
@@ -719,47 +802,58 @@ function WaitingHostPanel({
   }, [classId, hostAccessCode]);
 
   const decide = async (requestId: string, decision: 'approve' | 'reject') => {
-    await decideWaitingRequest({
-      classId,
-      requestId,
-      hostAccessCode,
-      decision,
-    });
-    await refresh();
+    try {
+      await decideWaitingRequest({
+        classId,
+        requestId,
+        hostAccessCode,
+        decision,
+      });
+      toast.success(`Request ${decision}d`);
+      await refresh();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : String(err));
+    }
   };
 
   return (
     <div className="waiting-menu">
-      <button className="secondary-button" onClick={() => setOpen(!open)}>
+      <button
+        className="secondary-button"
+        onClick={() => {
+          if (pending.length === 0) {
+            toast.info('No pending requests.');
+            setOpen(false);
+          } else {
+            setOpen(!open);
+          }
+        }}
+      >
         <Users size={18} />
         Waiting {pending.length}
       </button>
 
-      {open ? (
+      {open && pending.length > 0 ? (
         <div className="waiting-popover">
-          {pending.length ? (
-            pending.map(request => (
-              <div className="waiting-row" key={request.id}>
-                <span>{request.name}</span>
-                <div>
-                  <button
-                    className="icon-button"
-                    onClick={() => decide(request.id, 'approve')}
-                  >
-                    <Check size={17} />
-                  </button>
-                  <button
-                    className="icon-button"
-                    onClick={() => decide(request.id, 'reject')}
-                  >
-                    <X size={17} />
-                  </button>
-                </div>
+          {pending.map(request => (
+            <div className="waiting-row" key={request.id}>
+              <span>{request.name}</span>
+              <div>
+                <button
+                  className="icon-button"
+                  onClick={() => decide(request.id, 'approve')}
+                >
+                  <Check size={17} />
+                </button>
+                <button
+                  className="icon-button"
+                  onClick={() => decide(request.id, 'reject')}
+                >
+                  <X size={17} />
+                </button>
               </div>
-            ))
-          ) : (
-            <p className="muted-text">No pending requests.</p>
-          )}
+            </div>
+          ))}
         </div>
       ) : null}
     </div>

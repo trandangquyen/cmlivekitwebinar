@@ -1,3 +1,4 @@
+import fs from 'node:fs/promises';
 import {config} from './config.js';
 import {createRecording, getRecording, updateRecording} from './store.js';
 import {buildRoomRecordToken} from './tokens.js';
@@ -55,10 +56,7 @@ const terminalRecordingStatuses = new Set<RecordingRecord['status']>([
 const egressTerminalStatusFromStopError = (
   error: unknown,
 ): RecordingRecord['status'] | null => {
-  if (
-    !(error instanceof EgressRpcError) ||
-    error.method !== 'StopEgress'
-  ) {
+  if (!(error instanceof EgressRpcError) || error.method !== 'StopEgress') {
     return null;
   }
 
@@ -91,6 +89,133 @@ const egressErrorMessage = (error: unknown) =>
     : error instanceof Error
       ? error.message
       : String(error);
+
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+const timestampFromUnixNanos = (value: unknown) => {
+  try {
+    const nanos = BigInt(String(value || 0));
+    if (nanos <= 0n) {
+      return new Date().toISOString();
+    }
+    return new Date(Number(nanos / 1_000_000n)).toISOString();
+  } catch {
+    return new Date().toISOString();
+  }
+};
+
+export const recordingPatchFromEgressInfo = (
+  egressInfo: {status?: unknown; error?: unknown},
+  fallbackStatus: RecordingRecord['status'],
+): Pick<Partial<RecordingRecord>, 'status' | 'error' | 'stoppedAt'> => {
+  const status = String(egressInfo.status || '').toLowerCase();
+  const error =
+    typeof egressInfo.error === 'string' && egressInfo.error.trim()
+      ? egressInfo.error
+      : undefined;
+
+  if (status.includes('failed') || status.includes('aborted') || error) {
+    return {
+      status: 'failed',
+      error,
+      stoppedAt: new Date().toISOString(),
+    };
+  }
+  if (
+    status.includes('complete') ||
+    status.includes('ended') ||
+    status.includes('limit_reached')
+  ) {
+    return {
+      status: 'complete',
+      stoppedAt: new Date().toISOString(),
+    };
+  }
+  if (status.includes('active')) {
+    return {status: 'active'};
+  }
+  if (status.includes('ending') || status.includes('stopping')) {
+    return {status: 'stopping'};
+  }
+  if (status.includes('starting')) {
+    return {status: 'starting'};
+  }
+
+  return {status: fallbackStatus};
+};
+
+const dirnameFor = (filepath: string) => {
+  const separatorIndex = Math.max(
+    filepath.lastIndexOf('/'),
+    filepath.lastIndexOf('\\'),
+  );
+  return separatorIndex >= 0 ? filepath.slice(0, separatorIndex) : '.';
+};
+
+export const recordingPatchFromLocalManifest = async (
+  recording: RecordingRecord,
+): Promise<Pick<
+  Partial<RecordingRecord>,
+  'status' | 'error' | 'stoppedAt'
+> | null> => {
+  if (!recording.egressId || !recording.outputPath) {
+    return null;
+  }
+
+  const manifestPath = `${dirnameFor(recording.outputPath)}/${recording.egressId}.json`;
+  try {
+    const [manifestRaw, outputStat] = await Promise.all([
+      fs.readFile(manifestPath, 'utf8'),
+      fs.stat(recording.outputPath),
+    ]);
+    const manifest = JSON.parse(manifestRaw) as {
+      ended_at?: unknown;
+      error?: unknown;
+    };
+
+    if (!manifest.ended_at || !outputStat.isFile() || outputStat.size <= 0) {
+      return null;
+    }
+
+    const error =
+      typeof manifest.error === 'string' && manifest.error.trim()
+        ? manifest.error
+        : undefined;
+
+    return {
+      status: error ? 'failed' : 'complete',
+      error,
+      stoppedAt: timestampFromUnixNanos(manifest.ended_at),
+    };
+  } catch {
+    return null;
+  }
+};
+
+export const syncRecordingArtifacts = async (recording: RecordingRecord) => {
+  if (terminalRecordingStatuses.has(recording.status)) {
+    return recording;
+  }
+
+  const patch = await recordingPatchFromLocalManifest(recording);
+  if (!patch) {
+    return recording;
+  }
+
+  return (await updateRecording(recording.id, patch)) || recording;
+};
+
+const waitForRecordingArtifacts = async (recording: RecordingRecord) => {
+  let current = recording;
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    current = await syncRecordingArtifacts(current);
+    if (terminalRecordingStatuses.has(current.status)) {
+      return current;
+    }
+    await delay(250);
+  }
+  return current;
+};
 
 const buildFileOutput = (classroom: Classroom) => {
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
@@ -145,7 +270,7 @@ export const startRoomRecording = async (
       file_outputs: [fileOutput],
     });
     return await updateRecording(recording.id, {
-      status: 'active',
+      status: 'starting',
       egressId: String(result.egress_id || result.egressId || ''),
     });
   } catch (error) {
@@ -176,9 +301,13 @@ export const stopRoomRecording = async (input: {
   await updateRecording(recording.id, {status: 'stopping'});
   const token = await buildRoomRecordToken(input.classroom);
   try {
-    await egressRpc('StopEgress', token, {
+    const result = await egressRpc('StopEgress', token, {
       egress_id: recording.egressId,
     });
+    const updated = await updateRecording(recording.id, {
+      ...recordingPatchFromEgressInfo(result, 'stopping'),
+    });
+    return updated ? await waitForRecordingArtifacts(updated) : updated;
   } catch (error) {
     const terminalStatus = egressTerminalStatusFromStopError(error);
     const updated = await updateRecording(recording.id, {
@@ -197,9 +326,4 @@ export const stopRoomRecording = async (input: {
     }
     throw error;
   }
-
-  return await updateRecording(recording.id, {
-    status: 'complete',
-    stoppedAt: new Date().toISOString(),
-  });
 };

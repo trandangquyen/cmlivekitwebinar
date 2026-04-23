@@ -7,8 +7,7 @@ rtc:
   port_range_start: 50000
   port_range_end: 50100
   use_external_ip: false
-  # Local Docker Desktop demo: advertise host-mapped media ports to same-machine browsers.
-  node_ip: 127.0.0.1
+  # node_ip is supplied by docker compose from LIVEKIT_NODE_IP.
 
 redis:
   address: redis:6379

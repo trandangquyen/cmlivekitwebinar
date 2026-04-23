@@ -14,6 +14,13 @@ export interface Classroom {
   };
 }
 
+export interface PublicClassroom {
+  id: string;
+  title: string;
+  waitingRoomEnabled: boolean;
+  createdAt: string;
+}
+
 export interface WaitingRequest {
   id: string;
   classId: string;

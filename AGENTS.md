@@ -44,6 +44,11 @@ powershell -ExecutionPolicy Bypass -File .\scripts\start-stack.ps1 -Full
 docker compose -f docker-compose.full.yml ps
 ```
 
+**Important Note for Frontend Development**: The full Docker stack (`start-stack.ps1 -Full`) serves a statically built production bundle of the React frontend on `http://localhost:8080`. It does NOT have hot-module reloading. If you make changes to the React code in `apps/web/src` or `apps/api`, a simple browser hard-refresh will not show your changes. You must either:
+
+1. Rebuild the stack: `powershell -ExecutionPolicy Bypass -File .\scripts\start-stack.ps1 -Full -Rebuild`
+2. OR, run the local Vite dev server (`npm run dev:web`) which serves on `http://localhost:5173` with HMR.
+
 Open:
 
 - Web: `http://localhost:8080`

@@ -2,6 +2,7 @@ import type {
   Classroom,
   ClassroomRole,
   JoinResponse,
+  PublicClassroom,
   RecordingRecord,
   WaitingRequest,
 } from './types';
@@ -37,7 +38,7 @@ export const createClassroom = (input: {
   });
 
 export const getClassroom = (classId: string) =>
-  request<{classroom: Classroom}>(`/api/classes/${classId}`);
+  request<{classroom: PublicClassroom}>(`/api/classes/${classId}`);
 
 export const joinClassroom = (input: {
   classId: string;
