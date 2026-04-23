@@ -26,7 +26,7 @@ Statuses: `todo`, `in-progress`, `blocked`, `done`.
 | todo | Teacher controls | Remote mute, remove, lock class. |
 | todo | Attendance logs | Join/leave timestamps and participant role. |
 | todo | Recording playback page | Show completed recordings to host/admin. |
-| todo | Better preflight | Camera/mic test, permission troubleshooting. |
+| todo | Better preflight | Camera/mic test, permission troubleshooting. Basic disconnect/media error surfacing exists. |
 | todo | Network status UX | Reconnecting, poor network, packet loss warnings. |
 | todo | Class schedule metadata | Start time, teacher, group/class id. |
 | todo | Admin list page | Manage classes and recordings. |

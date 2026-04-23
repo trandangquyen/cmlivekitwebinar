@@ -104,6 +104,8 @@ Use this when you want Docker to run PostgreSQL, LiveKit, Redis, Egress, the API
    - API health: `http://localhost:4300/api/health`
    - LiveKit WebSocket: `ws://localhost:7880`
 
+The local Docker LiveKit config advertises `rtc.node_ip: 127.0.0.1` so browser tabs on the same Windows machine can reach the host-mapped WebRTC UDP ports. If you join from another device on the LAN, validate Egress recording, or deploy to staging, replace this with the host LAN/public IP or use `rtc.use_external_ip=true` as appropriate for that network.
+
 For production on a public server, update `infra/livekit/*.yaml` with the real domain, set `rtc.use_external_ip=true` or an explicit NAT IP, replace `devkey/secret`, and widen the UDP port range.
 
 ## Production Notes

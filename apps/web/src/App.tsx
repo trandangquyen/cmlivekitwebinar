@@ -1,4 +1,4 @@
-import {useEffect, useMemo, useState} from 'react';
+import {useEffect, useMemo, useRef, useState} from 'react';
 import {
   LiveKitRoom,
   RoomAudioRenderer,
@@ -6,6 +6,7 @@ import {
   useRoomContext,
   VideoConference,
 } from '@livekit/components-react';
+import {DisconnectReason, MediaDeviceFailure} from 'livekit-client';
 import {
   Check,
   Clipboard,
@@ -61,9 +62,65 @@ const copyText = async (value: string) => {
   await navigator.clipboard.writeText(value);
 };
 
+const formatDisconnectReason = (reason?: DisconnectReason) => {
+  const reasonName =
+    reason === undefined
+      ? 'UNKNOWN_REASON'
+      : DisconnectReason[reason] || String(reason);
+  const guidance: Partial<Record<DisconnectReason, string>> = {
+    [DisconnectReason.JOIN_FAILURE]:
+      'The browser could not finish the WebRTC join. Check LiveKit media ports and advertised IP.',
+    [DisconnectReason.SIGNAL_CLOSE]:
+      'The signaling connection closed before the room became active.',
+    [DisconnectReason.CONNECTION_TIMEOUT]:
+      'The WebRTC connection timed out before media could flow.',
+    [DisconnectReason.MEDIA_FAILURE]:
+      'The media connection failed after signaling connected.',
+    [DisconnectReason.SERVER_SHUTDOWN]: 'The LiveKit server stopped.',
+  };
+
+  return `Disconnected from the classroom (${reasonName}). ${
+    reason === undefined
+      ? 'Check the browser console and LiveKit logs for the exact failure.'
+      : guidance[reason] || 'Check the browser console and LiveKit logs for details.'
+  }`;
+};
+
+const mediaDeviceLabel = (kind?: MediaDeviceKind) => {
+  if (kind === 'audioinput') {
+    return 'Microphone';
+  }
+  if (kind === 'videoinput') {
+    return 'Camera';
+  }
+  return 'Media device';
+};
+
+const formatMediaDeviceFailure = (
+  failure?: MediaDeviceFailure,
+  kind?: MediaDeviceKind,
+) => {
+  const device = mediaDeviceLabel(kind);
+  const messages: Partial<Record<MediaDeviceFailure, string>> = {
+    [MediaDeviceFailure.PermissionDenied]:
+      'permission was denied. Allow access in the browser permission prompt.',
+    [MediaDeviceFailure.NotFound]:
+      'was not found. Check that the device is connected and enabled.',
+    [MediaDeviceFailure.DeviceInUse]:
+      'is already in use. On Windows, another tab or app can lock the same device.',
+    [MediaDeviceFailure.Other]: 'could not be started.',
+  };
+
+  return `${device} ${messages[failure || MediaDeviceFailure.Other]}`;
+};
+
+const formatRoomError = (error: Error) =>
+  `LiveKit error: ${error.message || error.name || 'Unknown error.'}`;
+
 export function App() {
   const [route, setRoute] = useState<Route>(() => parseRoute());
   const [session, setSession] = useState<JoinedSession | null>(null);
+  const [roomExitNotice, setRoomExitNotice] = useState('');
 
   useEffect(() => {
     const onPopState = () => setRoute(parseRoute());
@@ -72,6 +129,7 @@ export function App() {
   }, []);
 
   const navigate = (path: string) => {
+    setRoomExitNotice('');
     window.history.pushState(null, '', path);
     setRoute(parseRoute());
   };
@@ -81,8 +139,13 @@ export function App() {
       <ClassroomRoom
         session={session}
         onLeave={() => {
+          setRoomExitNotice('');
           setSession(null);
           navigate('/');
+        }}
+        onDisconnected={message => {
+          setSession(null);
+          setRoomExitNotice(message);
         }}
       />
     );
@@ -95,7 +158,11 @@ export function App() {
           classId={route.classId}
           initialRole={route.role || 'student'}
           initialCode={route.code || ''}
-          onJoined={setSession}
+          notice={roomExitNotice}
+          onJoined={joinedSession => {
+            setRoomExitNotice('');
+            setSession(joinedSession);
+          }}
           onBack={() => navigate('/')}
         />
       ) : (
@@ -228,12 +295,14 @@ function JoinPage({
   classId,
   initialRole,
   initialCode,
+  notice,
   onJoined,
   onBack,
 }: {
   classId: string;
   initialRole: ClassroomRole;
   initialCode: string;
+  notice?: string;
   onJoined: (session: JoinedSession) => void;
   onBack: () => void;
 }) {
@@ -381,6 +450,7 @@ function JoinPage({
         {waitingRequestId ? (
           <p className="notice-text">Waiting for host approval.</p>
         ) : null}
+        {notice ? <p className="error-text">{notice}</p> : null}
         {error ? <p className="error-text">{error}</p> : null}
       </form>
     </section>
@@ -390,10 +460,14 @@ function JoinPage({
 function ClassroomRoom({
   session,
   onLeave,
+  onDisconnected,
 }: {
   session: JoinedSession;
   onLeave: () => void;
+  onDisconnected: (message: string) => void;
 }) {
+  const userLeavingRef = useRef(false);
+  const [roomIssue, setRoomIssue] = useState('');
   const roomOptions = useMemo(
     () =>
       ({
@@ -423,9 +497,29 @@ function ClassroomRoom({
         audio={session.initialAudio}
         video={session.initialVideo}
         options={roomOptions}
-        onDisconnected={onLeave}>
+        onConnected={() => setRoomIssue('')}
+        onError={error => setRoomIssue(formatRoomError(error))}
+        onMediaDeviceFailure={(failure, kind) =>
+          setRoomIssue(formatMediaDeviceFailure(failure, kind))
+        }
+        onDisconnected={reason => {
+          if (
+            userLeavingRef.current ||
+            reason === DisconnectReason.CLIENT_INITIATED
+          ) {
+            return;
+          }
+          onDisconnected(formatDisconnectReason(reason));
+        }}>
         <RoomAudioRenderer />
-        <ClassroomTopbar session={session} onLeave={onLeave} />
+        <ClassroomTopbar
+          session={session}
+          roomIssue={roomIssue}
+          onLeave={() => {
+            userLeavingRef.current = true;
+            onLeave();
+          }}
+        />
         <section className="conference-surface">
           <VideoConference />
         </section>
@@ -436,9 +530,11 @@ function ClassroomRoom({
 
 function ClassroomTopbar({
   session,
+  roomIssue,
   onLeave,
 }: {
   session: JoinedSession;
+  roomIssue: string;
   onLeave: () => void;
 }) {
   const room = useRoomContext();
@@ -449,6 +545,7 @@ function ClassroomTopbar({
   const [recordingError, setRecordingError] = useState('');
 
   const isHost = session.role === 'host';
+  const topbarMessage = roomIssue || recordingError;
 
   const refreshRecordings = async () => {
     if (!isHost) {
@@ -525,16 +622,16 @@ function ClassroomTopbar({
         <button
           className="secondary-button"
           onClick={() => {
-            room.disconnect();
             onLeave();
+            room.disconnect();
           }}>
           <LogOut size={18} />
           Leave
         </button>
       </div>
 
-      {recordingError ? (
-        <div className="topbar-message error-text">{recordingError}</div>
+      {topbarMessage ? (
+        <div className="topbar-message error-text">{topbarMessage}</div>
       ) : null}
       {isHost && recordings.length ? (
         <div className="recording-list">

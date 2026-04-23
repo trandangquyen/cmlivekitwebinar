@@ -37,8 +37,11 @@ The project has moved from planning into a working local MVP baseline and the fi
   - Migration tooling and initial schema live under `apps/api/migrations`.
   - Class, waiting room, recording, and webhook metadata persist when Postgres is enabled.
 - Fixed classroom viewport issue where LiveKit control footer was hidden below the visible area.
+- Fixed local Docker Desktop media candidate handling for same-machine browser demos by advertising `127.0.0.1` instead of the LiveKit container IP.
+- Added frontend error surfacing for unexpected LiveKit disconnects and camera/microphone failures instead of silently navigating back to `/`.
 - Verified locally:
   - `npm run build` passes.
+  - `npm run typecheck` passes.
   - Docker stack runs.
   - API health returns 200.
   - Web health returns 200.
@@ -55,6 +58,7 @@ The project has moved from planning into a working local MVP baseline and the fi
 - No object storage, reverse proxy, HTTPS, observability, or backups yet.
 - Staging PostgreSQL server, backup/restore, and operational migration procedure are not validated yet.
 - LiveKit is using dev credentials and local network settings.
+- Local Docker media config is same-machine oriented (`rtc.node_ip=127.0.0.1`); LAN, staging, and Egress validation need a reachable LAN/public IP or external-IP setup.
 - UDP port range is intentionally small for local dev and is not production capacity.
 - No automated tests yet.
 - No load test harness yet.
@@ -65,6 +69,7 @@ The project has moved from planning into a working local MVP baseline and the fi
 - Web: `http://localhost:8080`
 - API: `http://localhost:4300`
 - LiveKit: `ws://localhost:7880`
+- LiveKit media candidate mode: `rtc.node_ip=127.0.0.1` for same-machine Docker Desktop browser testing.
 - Redis: `localhost:6379`
 - PostgreSQL: `localhost:5432` in full Docker mode.
 - UDP media ports: `50000-50100/udp`
