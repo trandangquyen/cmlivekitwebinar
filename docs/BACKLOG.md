@@ -15,7 +15,7 @@ Statuses: `todo`, `in-progress`, `blocked`, `done`.
 | done        | Production-safe secrets             | API strict config guard blocks placeholder/dev secrets and unsafe staging/production config.          |
 | todo        | Recording Egress validation         | Confirm playable files and metadata updates.                                                          |
 | in-progress | API tests                           | Class, join, waiting room, access guard, recording, webhook, and config guard coverage added.         |
-| in-progress | Web smoke tests                     | Initial create-class Playwright smoke test added. Join/waiting smoke tests still needed.              |
+| done        | Web smoke tests                     | Playwright smoke coverage now covers create, join invite prefill, and waiting-room entry flow.        |
 | in-progress | Reverse proxy/HTTPS                 | Caddy example uses staging/prod env placeholders; certificate validation still needed on a real host. |
 | done        | Staging runbook                     | `docs/STAGING_RUNBOOK.md` covers deploy, validation, and rollback steps.                              |
 | done        | Agent Review gate                   | `agent-review` Codex skill installed and documented.                                                  |

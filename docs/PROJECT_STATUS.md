@@ -1,6 +1,6 @@
 # Project Status
 
-Last updated: 2026-04-23
+Last updated: 2026-04-24
 
 ## Summary
 
@@ -45,6 +45,7 @@ The project has moved from planning into a working local MVP baseline and produc
   - Vitest/Supertest API test baseline.
   - Playwright browser smoke test baseline.
   - `npm run verify` quality gate.
+- Expanded Playwright smoke coverage for create, join invite prefill, and waiting-room entry flows.
 - Installed the Codex `agent-review` skill and documented the `Agent Review` gate.
 - Added production-readiness docs for the 25-class target and capacity test ladder.
 - Added local/staging/production env examples.
@@ -76,7 +77,7 @@ The project has moved from planning into a working local MVP baseline and produc
 - UDP port range is intentionally small for local dev and is not production capacity.
 - No load test harness yet.
 - No staging environment yet.
-- API/browser test baselines exist, but coverage is still incomplete for recording, auth, teacher controls, and production load.
+- API/browser test baselines exist, with Playwright smoke coverage for create/join/waiting-room flows, but coverage is still incomplete for recording, auth, teacher controls, and production load.
 
 ## Current Local Runtime
 
