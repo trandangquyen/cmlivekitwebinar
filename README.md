@@ -69,6 +69,15 @@ Run the browser smoke tests separately when a local browser test is needed:
 npm run test:browser
 ```
 
+Validate end-to-end local Egress recording on the full Docker stack:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/start-stack.ps1 -Full
+npm run validate:recording
+```
+
+The validation harness creates a fresh class, joins one host and one student with Playwright fake media, starts and stops recording through the API, waits for the recording to reach `complete`, and verifies that the API metadata, Egress manifest, and generated `.mp4` file all line up.
+
 ## Persistence And Migrations
 
 Full Docker mode uses PostgreSQL and runs API migrations automatically for local convenience. For a non-Docker API process, set:

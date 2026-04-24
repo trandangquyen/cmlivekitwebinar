@@ -19,6 +19,7 @@
     "test": "npm run test:api",
     "test:api": "npm run test --workspace @classroom/api",
     "test:browser": "playwright test",
+    "validate:recording": "node scripts/validate-recording.mjs",
     "typecheck": "npm run typecheck --workspace @classroom/api && npm run typecheck --workspace @classroom/web",
     "verify": "npm run typecheck && npm run lint && npm run test:api && npm run build"
   },

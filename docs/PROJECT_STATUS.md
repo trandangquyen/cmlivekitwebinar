@@ -46,6 +46,8 @@ The project has moved from planning into a working local MVP baseline and produc
   - Playwright browser smoke test baseline.
   - `npm run verify` quality gate.
 - Expanded Playwright smoke coverage for create, join invite prefill, and waiting-room entry flows.
+- Added an automated local Egress validation harness:
+  - `npm run validate:recording` creates a class, joins host and student sessions with Playwright fake media, starts/stops recording through the API, and verifies the API metadata, Egress manifest, and generated MP4 file.
 - Installed the Codex `agent-review` skill and documented the `Agent Review` gate.
 - Added production-readiness docs for the 25-class target and capacity test ladder.
 - Added local/staging/production env examples.
@@ -62,6 +64,7 @@ The project has moved from planning into a working local MVP baseline and produc
   - Full Docker API reports `dataStore=postgres`.
   - Initial PostgreSQL migration applies in the API container.
   - API-created class survives API container restart when `DATA_STORE=postgres`.
+  - `npm run validate:recording` passes against the full Docker stack and confirms a `complete` recording with matching API metadata, Egress manifest, and playable MP4 output.
 
 ## Current Known Limitations
 
@@ -69,6 +72,7 @@ The project has moved from planning into a working local MVP baseline and produc
 - No authentication or company user management yet.
 - Host/student access codes are basic link secrets, not production-grade access control.
 - Local recording writes MP4 output and now reconciles completed files from Egress manifests if webhook delivery is delayed or dropped.
+- Local Egress validation is now automated for the Docker full stack, but staging HTTPS and S3/object-storage recording validation are still pending.
 - No object storage, reverse proxy, HTTPS, observability, or backups yet.
 - Staging PostgreSQL server, backup/restore, and operational migration procedure are not validated yet.
 - Strict config guard now blocks unsafe API staging/production settings, but LiveKit/Egress staging config files still need real secret replacement during deployment.
@@ -101,7 +105,6 @@ The project has moved from planning into a working local MVP baseline and produc
 
 Move from local MVP to staging/production-ready v0.2 foundation:
 
-- Validate Egress recording.
 - Expand automated tests.
 - Deploy staging with HTTPS using the runbook.
 - Validate certificate issuance and reverse proxy behavior on a real host.

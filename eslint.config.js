@@ -2,9 +2,12 @@ import js from '@eslint/js';
 import tseslint from 'typescript-eslint';
 
 const nodeGlobals = {
+  Buffer: 'readonly',
   console: 'readonly',
+  clearTimeout: 'readonly',
   fetch: 'readonly',
   process: 'readonly',
+  setTimeout: 'readonly',
   setInterval: 'readonly',
   clearInterval: 'readonly',
   URL: 'readonly',
@@ -36,7 +39,11 @@ export default tseslint.config(
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {
-    files: ['apps/api/src/**/*.ts', 'apps/api/vitest.config.ts'],
+    files: [
+      'apps/api/src/**/*.ts',
+      'apps/api/vitest.config.ts',
+      'scripts/**/*.mjs',
+    ],
     languageOptions: {
       globals: nodeGlobals,
     },

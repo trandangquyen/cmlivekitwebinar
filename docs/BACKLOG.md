@@ -13,7 +13,7 @@ Statuses: `todo`, `in-progress`, `blocked`, `done`.
 | done        | DB migrations                       | Initial SQL migration and npm migration commands added.                                               |
 | done        | Staging env config                  | `.env.local.example`, `.env.staging.example`, and `.env.production.example` added.                    |
 | done        | Production-safe secrets             | API strict config guard blocks placeholder/dev secrets and unsafe staging/production config.          |
-| todo        | Recording Egress validation         | Confirm playable files and metadata updates.                                                          |
+| done        | Recording Egress validation         | Automated full-stack harness now validates API status, Egress manifest, and generated MP4 output.     |
 | in-progress | API tests                           | Class, join, waiting room, access guard, recording, webhook, and config guard coverage added.         |
 | done        | Web smoke tests                     | Playwright smoke coverage now covers create, join invite prefill, and waiting-room entry flow.        |
 | in-progress | Reverse proxy/HTTPS                 | Caddy example uses staging/prod env placeholders; certificate validation still needed on a real host. |
