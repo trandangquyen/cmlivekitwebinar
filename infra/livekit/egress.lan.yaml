@@ -1,0 +1,6 @@
+log_level: info
+insecure: true
+redis:
+  address: redis:6379
+template_base: http://localhost:7980/
+prometheus_port: 9898

@@ -1,0 +1,148 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: classroom
+      POSTGRES_USER: classroom
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - '127.0.0.1:5432:5432'
+    volumes:
+      - postgres-lan-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U classroom -d classroom']
+      interval: 10s
+      timeout: 3s
+      retries: 12
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ['redis-server', '--appendonly', 'yes']
+    ports:
+      - '127.0.0.1:6379:6379'
+    volumes:
+      - redis-lan-data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 3s
+      retries: 12
+
+  livekit:
+    image: ${LIVEKIT_IMAGE:-livekit/livekit-server:v1.10.1}
+    restart: unless-stopped
+    command:
+      [
+        '--config',
+        '/etc/livekit.yaml',
+        '--node-ip',
+        '${LIVEKIT_NODE_IP:-192.168.1.125}',
+      ]
+    depends_on:
+      redis:
+        condition: service_healthy
+    ports:
+      - '127.0.0.1:7880:7880'
+      - '7881:7881'
+      - '50000-52000:50000-52000/udp'
+    volumes:
+      - ./infra/livekit/livekit.lan.yaml:/etc/livekit.yaml:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -qO- http://127.0.0.1:7880/ || exit 1']
+      interval: 10s
+      timeout: 3s
+      retries: 12
+
+  egress:
+    image: ${LIVEKIT_EGRESS_IMAGE:-livekit/egress:v1.12.0}
+    restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
+      livekit:
+        condition: service_started
+    cap_add:
+      - SYS_ADMIN
+    shm_size: 1gb
+    environment:
+      EGRESS_CONFIG_FILE: /etc/egress.yaml
+      LIVEKIT_API_KEY: ${LIVEKIT_API_KEY}
+      LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET}
+      LIVEKIT_WS_URL: ws://livekit:7880
+    volumes:
+      - ./infra/livekit/egress.lan.yaml:/etc/egress.yaml:ro
+      - ./recordings:/out/recordings
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      livekit:
+        condition: service_started
+    environment:
+      APP_ENV: ${APP_ENV:-staging}
+      STRICT_CONFIG: ${STRICT_CONFIG:-true}
+      API_PORT: 4300
+      FRONTEND_ORIGIN: ${FRONTEND_ORIGIN}
+      PUBLIC_API_BASE_URL: ${PUBLIC_API_BASE_URL}
+      DATA_STORE: ${DATA_STORE:-postgres}
+      DATABASE_URL: ${DATABASE_URL}
+      DATABASE_SSL: ${DATABASE_SSL:-false}
+      DB_AUTO_MIGRATE: ${DB_AUTO_MIGRATE:-false}
+      LIVEKIT_WS_URL: ${LIVEKIT_WS_URL}
+      LIVEKIT_HTTP_URL: ${LIVEKIT_HTTP_URL:-http://livekit:7880}
+      LIVEKIT_API_KEY: ${LIVEKIT_API_KEY}
+      LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET}
+      CLASSROOM_DEFAULT_WAITING_ROOM: ${CLASSROOM_DEFAULT_WAITING_ROOM:-true}
+      CLASSROOM_TOKEN_TTL: ${CLASSROOM_TOKEN_TTL:-3h}
+      RECORDING_OUTPUT_MODE: ${RECORDING_OUTPUT_MODE:-local}
+      RECORDING_LOCAL_PREFIX: ${RECORDING_LOCAL_PREFIX:-/out/recordings}
+    ports:
+      - '127.0.0.1:4300:4300'
+    volumes:
+      - ./recordings:/out/recordings
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        VITE_API_BASE_URL: ${PUBLIC_API_BASE_URL}
+    restart: unless-stopped
+    depends_on:
+      - api
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      - api
+      - livekit
+      - web
+    environment:
+      CLASSROOM_DOMAIN: ${CLASSROOM_DOMAIN}
+      LIVEKIT_DOMAIN: ${LIVEKIT_DOMAIN}
+      CLASSROOM_TLS_CERT_FILE: ${CLASSROOM_TLS_CERT_FILE}
+      CLASSROOM_TLS_KEY_FILE: ${CLASSROOM_TLS_KEY_FILE}
+      LIVEKIT_TLS_CERT_FILE: ${LIVEKIT_TLS_CERT_FILE}
+      LIVEKIT_TLS_KEY_FILE: ${LIVEKIT_TLS_KEY_FILE}
+    ports:
+      - '80:80'
+      - '443:443'
+    volumes:
+      - ./infra/reverse-proxy/Caddyfile.lan:/etc/caddy/Caddyfile:ro
+      - ./infra/reverse-proxy/certs:/certs:ro
+      - caddy-data:/data
+      - caddy-config:/config
+
+volumes:
+  postgres-lan-data:
+  redis-lan-data:
+  caddy-data:
+  caddy-config:

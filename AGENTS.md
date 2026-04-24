@@ -24,7 +24,7 @@ Build a self-hosted online classroom platform using open-source LiveKit instead 
 4. `docs/BACKLOG.md`
 5. `docs/DECISIONS.md`
 6. `docs/PRODUCTION_READINESS_PLAN.md`
-7. If deploying or validating: `docs/STAGING_CHECKLIST.md`, `docs/PRODUCTION_CHECKLIST.md`, and `docs/CAPACITY_TEST_PLAN.md`
+7. If deploying or validating: `docs/LAN_RUNBOOK.md`, `docs/LAN_DEPLOY_NOTEBOOK.md`, `docs/STAGING_CHECKLIST.md`, `docs/PRODUCTION_CHECKLIST.md`, and `docs/CAPACITY_TEST_PLAN.md`
 
 ## Current Stack
 

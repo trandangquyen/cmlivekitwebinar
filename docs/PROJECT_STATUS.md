@@ -55,6 +55,8 @@ The project has moved from planning into a working local MVP baseline and produc
 - Added reverse proxy and TURN configuration examples.
 - Added staging/production strict config guard for the API startup path.
 - Added staging deployment, validation, and rollback runbook.
+- Added LAN-first deployment templates for an internal company rehearsal server with HTTPS and local recording.
+- Added a LAN deployment notebook and handoff checklist so another BE/agent can deploy the rehearsal stack without rediscovering the sequence.
 - Verified locally:
   - `npm run build` passes.
   - `npm run typecheck` passes.
@@ -73,6 +75,7 @@ The project has moved from planning into a working local MVP baseline and produc
 - Host/student access codes are basic link secrets, not production-grade access control.
 - Local recording writes MP4 output and now reconciles completed files from Egress manifests if webhook delivery is delayed or dropped.
 - Local Egress validation is now automated for the Docker full stack, but staging HTTPS and S3/object-storage recording validation are still pending.
+- LAN-first deployment artifacts are prepared, but internal host deployment and certificate validation are still pending.
 - No object storage, reverse proxy, HTTPS, observability, or backups yet.
 - Staging PostgreSQL server, backup/restore, and operational migration procedure are not validated yet.
 - Strict config guard now blocks unsafe API staging/production settings, but LiveKit/Egress staging config files still need real secret replacement during deployment.

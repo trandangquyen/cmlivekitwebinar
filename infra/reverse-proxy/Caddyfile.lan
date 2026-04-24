@@ -1,0 +1,18 @@
+{$CLASSROOM_DOMAIN} {
+  encode zstd gzip
+  tls {$CLASSROOM_TLS_CERT_FILE} {$CLASSROOM_TLS_KEY_FILE}
+
+  handle /api/* {
+    reverse_proxy api:4300
+  }
+
+  handle {
+    reverse_proxy web:80
+  }
+}
+
+{$LIVEKIT_DOMAIN} {
+  encode zstd gzip
+  tls {$LIVEKIT_TLS_CERT_FILE} {$LIVEKIT_TLS_KEY_FILE}
+  reverse_proxy livekit:7880
+}

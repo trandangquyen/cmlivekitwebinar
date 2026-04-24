@@ -24,6 +24,8 @@ This project is expected to continue across multiple work sessions and agents. S
 Use these supporting docs when needed:
 
 - `docs/DECISIONS.md`: architecture decisions.
+- `docs/LAN_DEPLOY_NOTEBOOK.md`: deployment handoff checklist for BE/agents on the LAN-first server.
+- `docs/LAN_RUNBOOK.md`: internal LAN-first deployment and rehearsal steps.
 - `docs/STAGING_CHECKLIST.md`: staging readiness.
 - `docs/STAGING_RUNBOOK.md`: staging deployment, validation, and rollback steps.
 - `docs/PRODUCTION_CHECKLIST.md`: production readiness.
@@ -77,6 +79,8 @@ npm run validate:recording
 ```
 
 The validation harness creates a fresh class, joins one host and one student with Playwright fake media, starts and stops recording through the API, waits for the recording to reach `complete`, and verifies that the API metadata, Egress manifest, and generated `.mp4` file all line up.
+
+For an internal company rehearsal on a LAN server, use `.env.lan.example`, `docker-compose.lan.yml`, and `docs/LAN_RUNBOOK.md`.
 
 ## Persistence And Migrations
 

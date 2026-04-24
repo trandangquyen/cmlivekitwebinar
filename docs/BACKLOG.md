@@ -16,7 +16,7 @@ Statuses: `todo`, `in-progress`, `blocked`, `done`.
 | done        | Recording Egress validation         | Automated full-stack harness now validates API status, Egress manifest, and generated MP4 output.     |
 | in-progress | API tests                           | Class, join, waiting room, access guard, recording, webhook, and config guard coverage added.         |
 | done        | Web smoke tests                     | Playwright smoke coverage now covers create, join invite prefill, and waiting-room entry flow.        |
-| in-progress | Reverse proxy/HTTPS                 | Caddy example uses staging/prod env placeholders; certificate validation still needed on a real host. |
+| in-progress | Reverse proxy/HTTPS                 | LAN-first compose/env/Caddy templates are ready; certificate validation still needs a real internal host rehearsal. |
 | done        | Staging runbook                     | `docs/STAGING_RUNBOOK.md` covers deploy, validation, and rollback steps.                              |
 | done        | Agent Review gate                   | `agent-review` Codex skill installed and documented.                                                  |
 
